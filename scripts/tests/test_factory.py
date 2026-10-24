@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import factory  # noqa: E402
@@ -279,6 +280,32 @@ The engine SHALL do something.
         self.assertEqual(code, 1)
         self.assertIn("cites test `tests/rates.test.ts:88`, which doesn't exist", out)
         self.assertIn("'Untraced' has no tag and no Source line", out)
+
+    def test_check_specs_capability_tag_under_purpose_traces_every_requirement(self):
+        spec = """# Rates Specification
+
+## Purpose
+Rates, from before the factory. `{tag}`
+
+## Requirements
+
+### Requirement: Symbol rate wins
+The engine SHALL use the symbol rate first.
+
+#### Scenario: Own rate
+- **WHEN** EURUSD has its own rate
+- **THEN** it is used
+"""
+        self.write("openspec/specs/rates/spec.md", spec.format(tag="P-1"))
+        self.assertEqual(self.run_cli("check-specs"), (0, "OK\n"))
+        self.write("openspec/specs/rates/spec.md", spec.format(tag="REF-12 AC-1"))
+        self.assertProblem(self.run_cli("check-specs"), "'Symbol rate wins' has no tag and no Source line")
+
+    def test_approve_defaults_to_git_user(self):
+        with mock.patch.object(factory, "git_user", return_value="Sasikumar JP"):
+            code, out = self.run_cli("approve", "REF-12", "--what", "proposal")
+        self.assertEqual(code, 0)
+        self.assertIn("by Sasikumar JP at", Path(".factory/jobs/REF-12.md").read_text())
 
     def test_approve_and_validate_after_archive(self):
         self.approve()

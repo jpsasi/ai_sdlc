@@ -45,7 +45,7 @@ Set the mode once, when the status file is created. The `code` source always mea
 
 ## Branch
 
-Stage 0 never commits to the default branch. Its work lives on `factory/foundation`, created from the latest default branch; a re-sync uses `factory/resync-<YYYY-MM-DD>`. It reaches the default branch through a pull request, and the factory takes tasks only once it has merged, because `/factory:next` reads these documents from the default branch.
+Stage 0 never commits to the target branch: `Target branch:` in `.factory/config.md`, else the repo's default branch. Its work lives on `factory/foundation`, created from the latest target branch; a re-sync uses `factory/resync-<YYYY-MM-DD>`. It reaches the target branch through a pull request, and the factory takes tasks only once it has merged, because `/factory:next` reads these documents from the target branch.
 
 ## Run
 
@@ -54,7 +54,8 @@ Stage 0 never commits to the default branch. Its work lives on `factory/foundati
      1. Resolve the sources from `$ARGUMENTS` exactly as step 1 of `${CLAUDE_PLUGIN_ROOT}/skills/product-sync/SKILL.md` does.
      2. If `$ARGUMENTS` is empty, ask for a source. When the repo already holds application code, offer `code` as an option.
      3. Set the mode.
-     4. Create `factory/foundation` from the latest default branch, switch to it, and create the status file there from the template below.
+     4. **Target branch.** Run steps 1, 3 and 7 of Setup in `${CLAUDE_PLUGIN_ROOT}/shared/CONFIG.md`: the host, the target branch, and protecting it. When the target branch doesn't exist on the remote yet, offer to create it from the default branch (`git push origin origin/<default>:refs/heads/<target>`) and wait for a yes. It must exist before guardrails protects it, and before anything branches from it.
+     5. Create `factory/foundation` from the latest target branch, and switch to it. Write `.factory/config.md` with the host, repository and target branch (the rest is filled in at the first ship), and create the status file from the template below.
    - **Present, and `$ARGUMENTS` is `code`:** keep the recorded sources. Code never replaces requirements that already exist, so tell the user why, and offer a **Drift check** (below) instead.
    - **Present, and `$ARGUMENTS` names a new source:** pass it to `product-sync`, which asks whether it adds a feature or replaces the existing sources. If every step is already `done`, continue with **Re-sync**.
    - **Present, and every step is `done`:** run **Re-sync**.
@@ -78,13 +79,13 @@ Stage 0 never commits to the default branch. Its work lives on `factory/foundati
    - links to `docs/` in the repo
 
    Show the draft to the user. Once they agree, write it to `docs/foundation-summary.md`, and tell the user it's ready to share with the product and tech teams. Confluence stays read-only. After a re-sync, update the same file rather than creating a new one.
-6. **Finish.** Tell the user Stage 0 is complete. Next, they open a pull request from the Stage 0 branch into the default branch, and the factory takes tasks once it has merged.
+6. **Finish.** Tell the user Stage 0 is complete. Next, they open a pull request from the Stage 0 branch into the target branch, and the factory takes tasks once it has merged.
 
 ## Re-sync
 
 Run this when requirements change after Stage 0 is complete: a source page was edited, or a new feature's page or brief was added. Only the steps the change affects run again.
 
-1. **Sync.** Create `factory/resync-<YYYY-MM-DD>` from the latest default branch, and switch to it. Follow `${CLAUDE_PLUGIN_ROOT}/skills/product-sync/SKILL.md`. If `docs/product.md` didn't change, report that, delete the branch, and stop.
+1. **Sync.** Create `factory/resync-<YYYY-MM-DD>` from the latest target branch, and switch to it. Follow `${CLAUDE_PLUGIN_ROOT}/skills/product-sync/SKILL.md`. If `docs/product.md` didn't change, report that, delete the branch, and stop.
 2. **Assess impact.** Dispatch the `factory:architect` subagent with the diff of `docs/product.md` and the current Stage 0 documents. It reports, for each later step, whether that step must reopen, and why:
 
    | Step | Reopens when the change |

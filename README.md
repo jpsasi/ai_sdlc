@@ -92,7 +92,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 
 `scripts/factory.py` (tests in `scripts/tests/`):
 - `validate <job> --stage spec|plan|build`: deltas are well formed and fit the living specs; every acceptance criterion is in the test plan, covered by a task, and proven by a test named `<job> AC-n …` that actually ran
-- `approve <job> --what proposal --by <name>`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval
+- `approve <job> --what proposal [--by <name>]`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval
 - `sync` / `archive <job>`: merge a change's deltas into the living specs, and archive the change
 - `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
 - `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles

@@ -3,7 +3,7 @@
 
 Run from the product repo root:
   factory.py validate <id> --stage spec|plan|build [--results <test-output-file>]
-  factory.py approve <id> --what proposal --by "<name>"
+  factory.py approve <id> --what proposal [--by "<name>"]   (default: git config user.name)
   factory.py sync <id>
   factory.py archive <id>
   factory.py check-specs
@@ -28,6 +28,7 @@ JOBS = Path(".factory/jobs")
 AC = re.compile(r"\bAC-\d+\b")
 STEP = re.compile(r"^- \[( |x)\] (\d+)\.(.*)$")
 REQ = "### Requirement: "
+CAPABILITY_TAG = re.compile(r"`(?:P|K|NFR)-\d+`")
 TAG = re.compile(r"`((?:P|K|NFR)-\d+|[A-Za-z][A-Za-z0-9-]* AC-\d+)`")
 NORMATIVE = re.compile(r"\b(SHALL|MUST)\b")
 DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED", "RENAMED")
@@ -339,6 +340,13 @@ def validate(args):
 
 # ---------- approve, sync, archive ----------
 
+def git_user():
+    try:
+        return subprocess.run(["git", "config", "user.name"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        return ""
+
+
 def approve(args):
     if args.what != "proposal":
         print("only 'proposal' approvals are recorded", file=sys.stderr)
@@ -349,8 +357,12 @@ def approve(args):
         print(f"need {cdir}/proposal.md and {record_path}", file=sys.stderr)
         return 2
     record = read(record_path)
+    by = args.by or git_user()
+    if not by:
+        print("no --by given, and git config user.name is not set", file=sys.stderr)
+        return 2
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    entry = f"- proposal {approval_hash(cdir)} by {args.by} at {stamp}"
+    entry = f"- proposal {approval_hash(cdir)} by {by} at {stamp}"
     if "\n## Approvals" not in "\n" + record:
         record = record.rstrip("\n") + "\n\n## Approvals\n"
     lines = record.rstrip("\n").split("\n")
@@ -413,11 +425,12 @@ def check_specs(_args):
             if f"\n{heading}" not in "\n" + text:
                 problems.append(f"{where}: no '{heading}' section")
         _, reqs, _ = split_main(text)
+        spec_traced = bool(CAPABILITY_TAG.search("\n".join(section(text, "Purpose"))))
         names = [n for n, _ in reqs]
         for name in sorted({n for n in names if names.count(n) > 1}):
             problems.append(f"{where}: duplicate requirement '{name}'")
         for name, block in reqs:
-            problems += requirement_problems(where, name, block)
+            problems += requirement_problems(where, name, block, need_trace=not spec_traced)
             for line in block.split("\n"):
                 if line.startswith("Source:"):
                     for kind, ref in re.findall(r"\b(test|code|imported)\s+`([^`]+)`", line):
@@ -498,7 +511,7 @@ def main(argv=None):
     a = sub.add_parser("approve", help="record a person's approval of the proposal and its deltas")
     a.add_argument("job")
     a.add_argument("--what", required=True)
-    a.add_argument("--by", required=True)
+    a.add_argument("--by", help="who approved; defaults to git config user.name")
     for name, text in (("sync", "merge the change's deltas into openspec/specs"),
                        ("archive", "move the change to openspec/changes/archive")):
         sub.add_parser(name, help=text).add_argument("job")
