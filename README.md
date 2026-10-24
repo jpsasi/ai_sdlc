@@ -4,12 +4,29 @@ A software factory plugin for Claude Code. It turns product requirements into an
 
 ## Install
 
+In Claude Code, from the repo you want to use the factory in:
+
 ```
-/plugin marketplace add <owner>/<repo>
-/plugin install factory@factory
+/plugin marketplace add jpsasi/ai_sdlc
+/plugin install factory@jpsasi
 ```
 
-To try it from a local clone without installing: `claude --plugin-dir /path/to/factory`.
+The marketplace is `jpsasi` and the plugin is `factory`, so commands are `/factory:<name>`. The repo is private: `git clone git@github.com:jpsasi/ai_sdlc.git` must work on your machine first (SSH key or `gh auth login`). Pull later changes with `/plugin marketplace update jpsasi`.
+
+From a local clone instead of GitHub: `/plugin marketplace add /path/to/ai_sdlc`, then the same install.
+
+To try it for one session without installing: `claude --plugin-dir /path/to/ai_sdlc`.
+
+To have a product repo offer the plugin to everyone who opens it, commit this in its `.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "jpsasi": { "source": { "source": "github", "repo": "jpsasi/ai_sdlc" } }
+  },
+  "enabledPlugins": { "factory@jpsasi": true }
+}
+```
 
 ## Needs
 
