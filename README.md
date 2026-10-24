@@ -18,6 +18,26 @@ To try it from a local clone without installing: `claude --plugin-dir /path/to/f
 - Python 3.8 or newer, for the validator (`scripts/factory.py`)
 - The Atlassian connector, only when requirements come from Confluence or tickets go to Jira
 
+## How it works
+
+```
+foundation ─▶ backlog of tickets
+                  │
+       (task) ─▶ go:  next ─▶ spec ─▶ plan ─▶ build ─▶ review ─▶ ship ─▶ PR
+                                                                         │
+                     person merges ─▶ ship again ─▶ deployed to dev ─▶ promote ─▶ QA, …
+```
+
+1. **Once per product:** run `/factory:foundation <source>`. It works out the product, domain, decisions, architecture, skeleton (new code) or baseline (existing code), guardrails and backlog, one step at a time, each approved by you.
+2. **Release tickets:** a ticket is ready for the factory when someone listed in `.factory/trusted.md` adds the `factory-ready` label (or, with the local tracker, sets the backlog row to `ready`). `/factory:task` turns a bug or task from chat into such a ticket.
+3. **Per ticket:** run `/factory:go`. It claims the top ready ticket, then specs, plans, builds, reviews and ships it, ending with an open PR.
+4. **After a person merges the PR:** run `/factory:ship <KEY>` again. It deletes the branch, waits for the deploy to the first environment, and moves the ticket on.
+5. **When testing passes:** run `/factory:promote` to move everything from one environment to the next, such as dev to QA.
+
+**Where it stops for a person:** approving each foundation step, approving the proposal (spec), settling plan flags, merging the PR, and merging each promotion PR. The factory never approves or merges anything itself.
+
+**When things change:** re-run `/factory:foundation` with the changed source when requirements change. It reopens only the affected steps. To try an idea that isn't a requirement yet, use `/factory:spike`. Its findings feed the requirements, and its code never merges.
+
 ## Commands
 
 | Command | Stage | Does |
@@ -49,7 +69,7 @@ The other step skills (`product-sync`, `domain`, `decide`, `architecture`, `skel
 - `.factory/jobs/`: job records
 - `.factory/trusted.md`: who may release tickets to the factory
 
-Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch, and never pushes. Git hooks installed by `guardrails` enforce this in each clone.
+Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch. Only `ship` pushes, and only `factory/` branches (the job branch, or a revert branch for a rollback). Git hooks installed by `guardrails` enforce this in each clone.
 
 ## Checks done by code, not by the model
 
