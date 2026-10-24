@@ -204,6 +204,28 @@ class FactoryTest(unittest.TestCase):
         self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"),
                            "'REF-12 AC-2' does not appear in the test results")
 
+    def test_build_ignores_binary_test_fixtures(self):
+        self.approve()
+        Path("tests/fixtures").mkdir(parents=True)
+        Path("tests/fixtures/data.csv.zip").write_bytes(b"PK\x03\x04\xff\xfe\x80 binary")
+        self.write("out.txt", "PASS REF-12 AC-1 applies once\nPASS REF-12 AC-2 retry is idempotent\n")
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
+
+    def test_build_accepts_identifier_style_names(self):
+        # pytest, Go, Rust and JUnit names can't hold spaces or dashes
+        self.approve()
+        self.write("tests/test_credit.py", "def test_ref12_ac1_applies_once(): ...\ndef test_REF12_AC2_retry(): ...\n")
+        self.write("tests/credit.test.ts", "")
+        self.write("out.txt", "tests/test_credit.py::test_ref12_ac1_applies_once PASSED\n"
+                              "tests/test_credit.py::test_REF12_AC2_retry PASSED\n")
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
+
+    def test_identifier_style_names_need_the_exact_criterion(self):
+        self.approve()
+        self.write("tests/test_credit.py", "def test_ref12_ac1_applies_once(): ...\nfunc TestREF12AC21Other() {}\n")
+        self.write("tests/credit.test.ts", "")
+        self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "build"), "no test named 'REF-12 AC-2 ...'")
+
     # sync, archive, check-specs
 
     def test_sync_applies_delta_then_archive(self):

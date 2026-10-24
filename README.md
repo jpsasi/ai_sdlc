@@ -103,6 +103,6 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
 agents/           requirements-analyst, architect, planner, investigator, reviewer
-scripts/          factory.py validator and its tests; git hooks
+scripts/          factory.py validator and its tests; git hooks and Claude Code hooks (env guard, Stop tests, test lock)
 shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, domain, ADRs, design, testing, prototypes
 ```

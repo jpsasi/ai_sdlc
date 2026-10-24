@@ -43,7 +43,7 @@ class Problem(Exception):
 
 def read(path):
     p = Path(path)
-    return p.read_text(encoding="utf-8").replace("\r\n", "\n") if p.is_file() else None
+    return p.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n") if p.is_file() else None
 
 
 def section(text, heading):
@@ -303,6 +303,12 @@ def check_tasks(cdir, acs, problems):
     return steps
 
 
+def ac_test_name(job, ac):
+    """Matches '<job> AC-n' as written, or as an identifier: REF-12 AC-2 -> test_ref12_ac2_..., TestREF12AC2..."""
+    ident = re.sub(r"[^A-Za-z0-9]", "", job) + r"_?ac_?" + ac.split("-")[1]
+    return re.compile(rf"{re.escape(job)} {ac}(?!\d)|(?<![0-9]){ident}(?!\d)", re.IGNORECASE)
+
+
 def check_build(job, acs, steps, results, problems):
     for number, ticked, _ in steps:
         if not ticked:
@@ -312,10 +318,10 @@ def check_build(job, acs, steps, results, problems):
     if results and output is None:
         problems.append(f"results file {results} not found")
     for ac in acs:
-        tag = f"{job} {ac}"
-        if tag not in corpus:
+        tag, name = f"{job} {ac}", ac_test_name(job, ac)
+        if not name.search(corpus):
             problems.append(f"no test named '{tag} ...' in the test files")
-        elif output is not None and tag not in output:
+        elif output is not None and not name.search(output):
             problems.append(f"test '{tag}' does not appear in the test results: did it run?")
 
 
