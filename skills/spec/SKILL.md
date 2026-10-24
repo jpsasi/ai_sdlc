@@ -27,8 +27,8 @@ Stage 2 of the factory. Turn the active job's ticket into an OpenSpec change, `o
    - A delta, `openspec/changes/<id>/specs/<capability>/spec.md`, for each capability whose observable behaviour changes. Its ADDED and MODIFIED requirements carry the `<id> AC-n` tags they deliver. `OPENSPEC.md` says which changes need deltas.
 
    Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage spec`, and fix the change until it prints OK. Then commit the draft change, any baselined specs and the job record as `spec: <id> draft`, so nothing is lost if the session ends before approval.
-6. **Approve.** Show the proposal and the deltas, and ask: **"Approve this proposal? If yes, what name should I record?"** Only an explicit yes counts.
-   - On a yes: run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" approve <id> --what proposal --by "<the name given>"`. The tool records who approved it, when, and a hash of the proposal and its deltas, so any later edit to either voids the approval. Add `Change: openspec/changes/<id>/` to the job record, set the job to `planning`, and commit the job record and any further changes as `spec: <id> approved by <name>`. Never push. Offer to run `/factory:plan`.
+6. **Approve.** Show the proposal and the deltas, and ask: **"Approve this proposal? I'll record the approver as <git config user.name>; give another name if that's wrong."** Only an explicit yes counts.
+   - On a yes: run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" approve <id> --what proposal`, adding `--by "<name>"` only for someone else. The tool records who approved it, when, and a hash of the proposal and its deltas, so any later edit to either voids the approval. Add `Change: openspec/changes/<id>/` to the job record, set the job to `planning`, and commit the job record and any further changes as `spec: <id> approved by <name>`. Never push. Offer to run `/factory:plan`.
    - On changes requested: revise, validate, and ask again.
 
 ## `proposal.md` format

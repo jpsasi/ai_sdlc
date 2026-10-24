@@ -23,6 +23,8 @@ test("user can check out with a valid cart", async () => {
 
 Every test that proves an acceptance criterion is named `<job id> AC-n <behaviour>`, for example `REF-12 AC-2 retry applies credit once`. The validator (`factory.py`) traces each criterion to its test by that name, and checks that it ran. Put the name where the test runner reports it: the test title, or a `describe` block around the tests.
 
+Where test names must be identifiers (pytest, Go, Rust, JUnit methods, XCTest), drop the job id's punctuation and keep the criterion: `test_ref12_ac2_retry_applies_credit_once`, `TestREF12AC2RetryAppliesCreditOnce`. Case and the `_` separators don't matter. Run the tests verbosely (`pytest -v`, `go test -v`) so each name appears in the results.
+
 ## Where tests go
 
 Tests live at **seams**, the public interfaces in `DESIGN.md`, never against internals. The plan names the seam and the test for each step, so testing effort lands on the critical paths rather than on every edge case.
