@@ -20,7 +20,7 @@ Find the active job, as `JOBS.md` describes. Then follow the first case that mat
 | empty | yes | Resume it |
 | empty | none | Claim the top ready ticket: follow `${CLAUDE_PLUGIN_ROOT}/skills/next/SKILL.md` |
 | a ticket id (`REF-12`, `#12` or `gh-12`, `T-3`) | that ticket | Resume it |
-| a ticket id whose job is `pr_open` | any | Follow the PR feedback part of `${CLAUDE_PLUGIN_ROOT}/skills/ship/SKILL.md` for it |
+| a ticket id whose job is `pr_open` | any | Follow `${CLAUDE_PLUGIN_ROOT}/skills/ship/SKILL.md` for it: PR feedback while the PR is open, the deploy once it has merged |
 | a ticket id | another ticket | Show the active job, offer to resume it or free the slot with `/factory:job cancel`, and stop |
 | a ticket id | none | Claim that ticket: follow `${CLAUDE_PLUGIN_ROOT}/skills/next/SKILL.md` with the id. Every check still applies, trust included. |
 | any other text | none | It's a new bug or task: follow `${CLAUDE_PLUGIN_ROOT}/skills/task/SKILL.md` with the text, then claim the ticket it creates, as above |
@@ -47,7 +47,7 @@ When a stage skill ends by offering the next stage, that next stage simply runs.
 Stop, and tell the user where things stand and what to do next, when:
 
 - **A gate needs the user**: approving the proposal, settling plan flags or a scope question, a failing step, a requirement change. Wait for their answer, then carry on with the loop.
-- **The job is `pr_open`**: the PR is with a person. Next: `/factory:release <id>` once it has merged, or `/factory:go <id>` again later, which resumes at the PR feedback in `${CLAUDE_PLUGIN_ROOT}/skills/ship/SKILL.md`.
+- **The job is `pr_open`**: the PR is with a person. Next: `/factory:go <id>` (or `/factory:ship <id>`) again later, which resumes in `${CLAUDE_PLUGIN_ROOT}/skills/ship/SKILL.md`: at the PR feedback while it's open, or at the deploy once it has merged.
 - **The job is `escalated`**: report its History's last entry, and point at `/factory:job retry`.
 - **The user asks to pause.** Everything is committed, so `/factory:go` resumes later at the same point.
 

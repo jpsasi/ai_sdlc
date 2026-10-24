@@ -31,12 +31,11 @@ To try it from a local clone without installing: `claude --plugin-dir /path/to/f
 | `/factory:plan` | 3 | Writes `design.md` and test-first `tasks.md` |
 | `/factory:build` | 4 | Builds the plan step by step: red, green, commit |
 | `/factory:review` | 5 | Independent review; blocking findings go back to build, at most twice |
-| `/factory:ship` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments |
-| `/factory:release <job>` | 6 | After a person merges: deletes the branch, follows the deploy, moves the ticket |
+| `/factory:ship [job]` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments, and after the merge to delete the branch, follow the deploy and move the ticket |
 | `/factory:promote [from] [to]` | 6 | On request: promotes one environment's branch to the next, follows the deploy, moves the tickets |
 | `/factory:spike <idea>` | — | A time-boxed experiment that never merges; only its findings do |
 
-A bug fix is usually just `/factory:go <KEY>`, then `/factory:release <KEY>` after the PR merges. The stage commands below `go` stay available for resuming or redoing a single stage.
+A bug fix is usually just `/factory:go <KEY>`, then `/factory:ship <KEY>` after the PR merges. The stage commands below `go` stay available for resuming or redoing a single stage.
 
 The other step skills (`product-sync`, `domain`, `decide`, `architecture`, `skeleton`, `baseline`, `guardrails`, `backlog`) run from `foundation`, and can also be run on their own.
 

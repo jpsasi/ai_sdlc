@@ -21,7 +21,7 @@ Every stage starts by switching to the job's branch (the working tree must be cl
 | `reviewing` | Stage 4, when the build finishes | Waiting for, or under, review |
 | `reviewed` | Stage 5 | Review passed, waiting for the PR |
 | `pr_open` | Stage 6 `ship` | PR open, waiting for a person to review and merge it |
-| `done` | Stage 6 `release` | Merged, and deployed to the first environment if one is configured |
+| `done` | Stage 6 `ship`, after the merge | Merged, and deployed to the first environment if one is configured |
 | `escalated` | Any stage, or `${CLAUDE_PLUGIN_ROOT}/skills/job/SKILL.md` | Stuck, cancelled, or released to a person. The History says why. |
 
 **Escalating** a job also tells its ticket: comment why on the Jira or GitHub ticket and remove `factory-in-progress`, or with the `local` tracker set the backlog row to `hold` with a note under it. Otherwise the tracker keeps showing the work as in progress.
