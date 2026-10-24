@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: next-picks-priority-respects-deps
+expected_outcome: |
+  Claims T-3, the highest-priority ready task whose dependencies are done. Skips T-2 because it depends on T-3, and T-5 because P-3 is blocked by REF-7. Creates factory/T-3 with a queued job record.
+context:
+  scaffold_script: place-files.sh

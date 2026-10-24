@@ -1,0 +1,72 @@
+# Factory
+
+A software factory plugin for Claude Code. It turns product requirements into an architecture, a backlog, and reviewed, test-first changes, one job at a time, with a person approving at each key point. It's self-contained: nothing else needs installing.
+
+## Install
+
+```
+/plugin marketplace add <owner>/<repo>
+/plugin install factory@factory
+```
+
+To try it from a local clone without installing: `claude --plugin-dir /path/to/factory`.
+
+## Needs
+
+- `git`, in the product repo
+- `gh` (GitHub) or `az` with the `azure-devops` extension (Azure Repos), signed in
+- Python 3.8 or newer, for the validator (`scripts/factory.py`)
+- The Atlassian connector, only when requirements come from Confluence or tickets go to Jira
+
+## Commands
+
+| Command | Stage | Does |
+|---|---|---|
+| **`/factory:go [ticket \| description]`** | 1–6 | **The everyday command.** Claims a ticket (or creates one from a description), then runs spec, plan, build, review and ship, stopping only where a person decides. Re-run to resume. |
+| `/factory:foundation <source>` | 0 | Product, domain, decisions, architecture, skeleton or baseline, guardrails, backlog. The source is a Confluence URL, a file, chat text, or `code` for an existing codebase. |
+| `/factory:task <description>` | 1 | Turns a bug or task described in chat into a complete ticket |
+| `/factory:next` | 1 | Picks, checks and claims the next ready ticket |
+| `/factory:job [cancel\|retry\|release]` | 1 | Shows or controls the active job |
+| `/factory:spec` | 2 | Writes the OpenSpec proposal and spec deltas: acceptance criteria, impact, release, reproduction for bugs |
+| `/factory:plan` | 3 | Writes `design.md` and test-first `tasks.md` |
+| `/factory:build` | 4 | Builds the plan step by step: red, green, commit |
+| `/factory:review` | 5 | Independent review; blocking findings go back to build, at most twice |
+| `/factory:ship` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments |
+| `/factory:release <job>` | 6 | After a person merges: deletes the branch, follows the deploy, moves the ticket |
+| `/factory:promote [from] [to]` | 6 | On request: promotes one environment's branch to the next, follows the deploy, moves the tickets |
+| `/factory:spike <idea>` | — | A time-boxed experiment that never merges; only its findings do |
+
+A bug fix is usually just `/factory:go <KEY>`, then `/factory:release <KEY>` after the PR merges. The stage commands below `go` stay available for resuming or redoing a single stage.
+
+The other step skills (`product-sync`, `domain`, `decide`, `architecture`, `skeleton`, `baseline`, `guardrails`, `backlog`) run from `foundation`, and can also be run on their own.
+
+## What it writes in your repo
+
+- `docs/`: product, architecture, ADRs, backlog, baseline
+- `CONTEXT.md`: the domain glossary
+- `openspec/specs/`: living specs, the current behaviour of each capability
+- `openspec/changes/<job>/`: each job's proposal, deltas, design, tasks and review, archived once shipped
+- `.factory/config.md`: host, target branch and environments, asked once at the first ship
+- `.factory/jobs/`: job records
+- `.factory/trusted.md`: who may release tickets to the factory
+
+Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch, and never pushes. Git hooks installed by `guardrails` enforce this in each clone.
+
+## Checks done by code, not by the model
+
+`scripts/factory.py` (tests in `scripts/tests/`):
+- `validate <job> --stage spec|plan|build`: deltas are well formed and fit the living specs; every acceptance criterion is in the test plan, covered by a task, and proven by a test named `<job> AC-n …` that actually ran
+- `approve <job> --what proposal --by <name>`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval
+- `sync` / `archive <job>`: merge a change's deltas into the living specs, and archive the change
+- `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
+- `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles
+
+## Layout
+
+```
+.claude-plugin/   plugin.json, marketplace.json
+skills/           one directory per skill
+agents/           requirements-analyst, architect, planner, investigator, reviewer
+scripts/          factory.py validator and its tests; git hooks
+shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, domain, ADRs, design, testing, prototypes
+```

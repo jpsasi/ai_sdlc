@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: spec-bug-is-requirement-change
+expected_outcome: |
+  Recognises that bug T-7 expects cash withdrawal, which the product rules out (C-1, out of scope), so it is a requirement change, not a defect. Writes no proposal, escalates the job with 'requirement change', and points the user to the requirements and /factory:foundation.
+context:
+  scaffold_script: place-files.sh

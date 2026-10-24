@@ -1,0 +1,12 @@
+{
+  "name": "factory",
+  "owner": { "name": "Sasikumar JP" },
+  "description": "The software factory plugin",
+  "plugins": [
+    {
+      "name": "factory",
+      "source": ".",
+      "description": "A software factory for Claude Code: from requirements to reviewed, test-first PRs, one job at a time."
+    }
+  ]
+}

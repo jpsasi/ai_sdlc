@@ -1,0 +1,15 @@
+#!/bin/sh
+# Factory: commits go on work branches (factory/<id>, factory/foundation, prototype/<topic> ...),
+# never on the default branch or a protected one. Solo repos can opt out:
+#   git config factory.allowDefaultBranch true
+set -f
+[ "$(git config --get factory.allowDefaultBranch)" = "true" ] && exit 0
+branch=$(git symbolic-ref --short HEAD 2>/dev/null) || exit 0   # detached HEAD (rebase etc.)
+for p in $(. "$(dirname "$0")/factory-protected.sh"); do
+  case "$branch" in
+    $p)
+      echo "factory: '$branch' is protected; commit on a work branch, e.g. git switch -c factory/<name>" >&2
+      exit 1 ;;
+  esac
+done
+exit 0

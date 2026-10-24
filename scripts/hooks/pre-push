@@ -1,0 +1,16 @@
+#!/bin/sh
+# Factory: protected branches change only through pull requests. This hook guards one clone;
+# the hosting service's branch protection is the real control.
+set -f
+protected=$(. "$(dirname "$0")/factory-protected.sh")
+while read -r local_ref local_sha remote_ref remote_sha; do
+  branch=${remote_ref#refs/heads/}
+  for p in $protected; do
+    case "$branch" in
+      $p)
+        echo "factory: push to '$branch' is blocked; open a pull request instead." >&2
+        exit 1 ;;
+    esac
+  done
+done
+exit 0

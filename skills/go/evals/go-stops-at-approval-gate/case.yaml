@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: go-stops-at-approval-gate
+expected_outcome: |
+  Claims T-3 and runs the spec stage until its first human gate: either open questions about gaps (grilling format, at most 3, each with a recommendation) or approval of a written proposal. It answers no gap itself, writes no code, no design or tasks, records no approval, and commits its progress.
+context:
+  scaffold_script: place-files.sh

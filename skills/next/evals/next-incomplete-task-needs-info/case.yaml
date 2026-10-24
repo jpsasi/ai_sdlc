@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: next-incomplete-task-needs-info
+expected_outcome: |
+  Does not claim T-6, because it has no acceptance criteria. With the local tracker it sets the row to needs-info with a note saying what is missing, and explains how to re-release it.
+context:
+  scaffold_script: place-files.sh

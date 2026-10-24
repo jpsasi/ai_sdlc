@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: next-skips-blocked-capability
+expected_outcome: |
+  Does not claim T-5, because its capability P-3 is blocked by REF-7. Creates no branch or job record, leaves the row ready, and explains why.
+context:
+  scaffold_script: place-files.sh
