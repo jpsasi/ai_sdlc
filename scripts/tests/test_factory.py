@@ -213,6 +213,15 @@ class FactoryTest(unittest.TestCase):
         self.write("out.txt", "PASS REF-12 AC-1 applies once\nPASS REF-12 AC-2 retry is idempotent\n")
         self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
 
+    def test_badly_encoded_spec_is_reported(self):
+        Path("openspec/specs/referral-credit/spec.md").write_bytes(LIVING.encode("utf-8") + b"\xf6\n")
+        self.assertProblem(self.run_cli("check-specs"), "openspec/specs/referral-credit/spec.md is not valid UTF-8")
+
+    def test_build_reads_results_with_stray_bytes(self):
+        self.approve()
+        Path("out.txt").write_bytes(b"PASS REF-12 AC-1 applies once \xf6\nPASS REF-12 AC-2 retry is idempotent\n")
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
+
     def test_build_accepts_identifier_style_names(self):
         # pytest, Go, Rust and JUnit names can't hold spaces or dashes
         self.approve()

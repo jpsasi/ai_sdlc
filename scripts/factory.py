@@ -47,9 +47,16 @@ class Problem(Exception):
 
 # ---------- reading ----------
 
-def read(path):
+def read(path, errors="strict"):
+    """The file's text, or None when it doesn't exist. Docs and specs must be UTF-8;
+    test files pass errors="replace", since binary fixtures live beside them."""
     p = Path(path)
-    return p.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n") if p.is_file() else None
+    if not p.is_file():
+        return None
+    try:
+        return p.read_text(encoding="utf-8", errors=errors).replace("\r\n", "\n")
+    except UnicodeDecodeError as e:
+        raise Problem(f"{path} is not valid UTF-8 (byte {e.start})") from None
 
 
 def section(text, heading):
@@ -319,8 +326,8 @@ def check_build(job, acs, steps, results, problems):
     for number, ticked, _ in steps:
         if not ticked:
             problems.append(f"task {number} is not ticked")
-    corpus = "\n".join(read(f) or "" for f in tracked_test_files())
-    output = read(results) if results else None
+    corpus = "\n".join(read(f, errors="replace") or "" for f in tracked_test_files())
+    output = read(results, errors="replace") if results else None
     if results and output is None:
         problems.append(f"results file {results} not found")
     if output is not None:
@@ -376,7 +383,7 @@ def validate(args):
 
 def stamp(args):
     path = JOBS / f"{args.job}-results.txt"
-    text, tree = read(path), code_tree()
+    text, tree = read(path, errors="replace"), code_tree()
     if text is None:
         print(f"{path} not found: save the test output there first", file=sys.stderr)
         return 2
@@ -392,7 +399,7 @@ def stamp(args):
 
 def fresh(args):
     path = JOBS / f"{args.job}-results.txt"
-    text = read(path)
+    text = read(path, errors="replace")
     if text is None:
         return report([f"{path} not found"])
     saved, tree = results_stamp(text), code_tree()
@@ -589,7 +596,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     commands = {"validate": validate, "approve": approve, "sync": sync, "archive": archive,
                 "check-specs": check_specs, "check-docs": check_docs, "stamp": stamp, "fresh": fresh}
-    return commands[args.command](args)
+    try:
+        return commands[args.command](args)
+    except Problem as e:
+        return report([str(e)])
 
 
 if __name__ == "__main__":
