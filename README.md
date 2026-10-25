@@ -96,6 +96,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 - `sync` / `archive <job>`: merge a change's deltas into the living specs, and archive the change
 - `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
 - `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles
+- `stamp` / `fresh <job>`: record which code the saved test results came from, so review and ship re-run the suite only when the code changed
 
 ## Layout
 

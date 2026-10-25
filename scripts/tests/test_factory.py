@@ -1,6 +1,7 @@
 import contextlib
 import io
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -314,6 +315,52 @@ The engine SHALL use the symbol rate first.
         self.write("out.txt", "PASS REF-12 AC-1\nPASS REF-12 AC-2\n")
         self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
         self.assertEqual(self.approve()[0], 0)
+
+    # stamp, fresh
+
+    def git(self, *args):
+        subprocess.run(["git", *args], check=True, capture_output=True)
+
+    def commit_all(self):
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x")
+
+    def stamped_results(self):
+        self.git("init", "-q")
+        self.commit_all()
+        self.write(".factory/jobs/REF-12-results.txt", "PASS REF-12 AC-1 applies once\nPASS REF-12 AC-2 retry is idempotent\n")
+        self.assertEqual(self.run_cli("stamp", "REF-12")[0], 0)
+
+    def test_results_stay_fresh_when_only_docs_specs_and_ci_change(self):
+        self.stamped_results()
+        self.write("docs/notes.md", "more")
+        self.write(".github/workflows/ci.yml", "on: push")
+        self.write(f"{C}/review.md", "# Review")
+        self.commit_all()
+        self.assertEqual(self.run_cli("fresh", "REF-12")[0], 0)
+
+    def test_results_go_stale_when_code_changes(self):
+        self.stamped_results()
+        self.write("src/credit.ts", "export const x = 1;")
+        self.assertProblem(self.run_cli("fresh", "REF-12"), "uncommitted code changes")
+        self.commit_all()
+        self.assertProblem(self.run_cli("fresh", "REF-12"), "code changed since the results were saved")
+        self.approve()
+        self.assertProblem(
+            self.run_cli("validate", "REF-12", "--stage", "build", "--results", ".factory/jobs/REF-12-results.txt"),
+            "results are from older code")
+
+    def test_restamping_replaces_the_stamp(self):
+        self.stamped_results()
+        self.write("src/credit.ts", "export const x = 1;")
+        self.commit_all()
+        self.assertEqual(self.run_cli("stamp", "REF-12")[0], 0)
+        self.assertEqual(self.run_cli("fresh", "REF-12")[0], 0)
+        self.assertEqual(Path(".factory/jobs/REF-12-results.txt").read_text().count("Code tree:"), 1)
+
+    def test_unstamped_results_are_not_fresh(self):
+        self.write(".factory/jobs/REF-12-results.txt", "PASS\n")
+        self.assertProblem(self.run_cli("fresh", "REF-12"), "not stamped")
 
     # check-docs
 

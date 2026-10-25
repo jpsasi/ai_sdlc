@@ -120,3 +120,5 @@ When a later change MODIFIES a baselined requirement, it adds its tags; the Sour
 | `archive <id>` | Moves the change to `openspec/changes/archive/YYYY-MM-DD-<id>/` |
 | `check-specs` | Every living spec is well formed, and every requirement is traceable, with every Source path existing |
 | `check-docs` | Unique ids in `docs/product.md` and `docs/backlog.md`, valid dependencies, no cycles |
+| `stamp <id>` | Writes `Code tree: <hash>` at the top of `.factory/jobs/<id>-results.txt`: the committed code the suite ran against, leaving out docs, specs, job records and CI config |
+| `fresh <id>` | Prints OK when that hash still matches the code, so review and ship skip re-running the suite. `validate --stage build` refuses stamped results from older code. |

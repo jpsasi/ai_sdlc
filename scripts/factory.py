@@ -8,6 +8,8 @@ Run from the product repo root:
   factory.py archive <id>
   factory.py check-specs
   factory.py check-docs
+  factory.py stamp <id>     record the code the results file was run against
+  factory.py fresh <id>     exit 0 when the results file is still current
 
 Prints OK (or what it did) and exits 0, or lists every problem and exits 1.
 """
@@ -34,6 +36,9 @@ NORMATIVE = re.compile(r"\b(SHALL|MUST)\b")
 DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED", "RENAMED")
 TEST_PATH = re.compile(r"(^|/)(tests?|spec|specs|__tests__)/|(^|/)test_[^/]*$|_test\.[a-z]+$|\.(test|spec)\.[a-z]+$")
 NOT_TESTS = ("docs/", "openspec/", ".factory/")
+# Paths whose changes can't change a test result, so they leave a results file current.
+NOT_CODE = NOT_TESTS + (".github/", ".azure-pipelines/", "azure-pipelines.yml")
+STAMP = "Code tree: "
 
 
 class Problem(Exception):
@@ -318,12 +323,43 @@ def check_build(job, acs, steps, results, problems):
     output = read(results) if results else None
     if results and output is None:
         problems.append(f"results file {results} not found")
+    if output is not None:
+        saved, tree = results_stamp(output), code_tree()
+        if saved and tree and saved != tree:
+            problems.append(f"results are from older code ({saved}, now {tree}): run the suite again")
     for ac in acs:
         tag, name = f"{job} {ac}", ac_test_name(job, ac)
         if not name.search(corpus):
             problems.append(f"no test named '{tag} ...' in the test files")
         elif output is not None and not name.search(output):
             problems.append(f"test '{tag}' does not appear in the test results: did it run?")
+
+
+def is_code(path):
+    return not path.startswith(NOT_CODE) and not path.endswith(".md")
+
+
+def git_out(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+
+
+def code_tree():
+    """Hash of the code at HEAD, without docs, specs, job records and CI config.
+    None when there are uncommitted code changes, or outside git."""
+    try:
+        status = git_out("status", "--porcelain", "--untracked-files=all")
+        tree = git_out("ls-tree", "-r", "HEAD")
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    if any(is_code(line[3:].split(" -> ")[-1].strip('"')) for line in status.split("\n") if line):
+        return None
+    code = [line for line in tree.split("\n") if line and is_code(line.split("\t", 1)[1])]
+    return hashlib.sha256("\n".join(code).encode("utf-8")).hexdigest()[:16]
+
+
+def results_stamp(text):
+    first = text.split("\n", 1)[0]
+    return first[len(STAMP):].strip() if first.startswith(STAMP) else None
 
 
 def validate(args):
@@ -336,6 +372,37 @@ def validate(args):
         if steps is not None and args.stage == "build":
             check_build(args.job, acs, steps, args.results, problems)
     return report(problems)
+
+
+def stamp(args):
+    path = JOBS / f"{args.job}-results.txt"
+    text, tree = read(path), code_tree()
+    if text is None:
+        print(f"{path} not found: save the test output there first", file=sys.stderr)
+        return 2
+    if tree is None:
+        print("uncommitted code changes: commit them, then run the suite and stamp", file=sys.stderr)
+        return 2
+    if results_stamp(text) is not None:
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+    path.write_text(f"{STAMP}{tree}\n{text}", encoding="utf-8")
+    print(f"stamped {path}: {tree}")
+    return 0
+
+
+def fresh(args):
+    path = JOBS / f"{args.job}-results.txt"
+    text = read(path)
+    if text is None:
+        return report([f"{path} not found"])
+    saved, tree = results_stamp(text), code_tree()
+    if saved is None:
+        return report([f"{path} is not stamped"])
+    if tree is None:
+        return report(["uncommitted code changes"])
+    if saved != tree:
+        return report([f"code changed since the results were saved ({saved}, now {tree})"])
+    return report([])
 
 
 # ---------- approve, sync, archive ----------
@@ -513,13 +580,15 @@ def main(argv=None):
     a.add_argument("--what", required=True)
     a.add_argument("--by", help="who approved; defaults to git config user.name")
     for name, text in (("sync", "merge the change's deltas into openspec/specs"),
-                       ("archive", "move the change to openspec/changes/archive")):
+                       ("archive", "move the change to openspec/changes/archive"),
+                       ("stamp", "record the code the job's results file was run against"),
+                       ("fresh", "check the job's results file still matches the code")):
         sub.add_parser(name, help=text).add_argument("job")
     sub.add_parser("check-specs", help="check every living spec is well formed and traceable")
     sub.add_parser("check-docs", help="check ids and dependencies in docs/product.md and docs/backlog.md")
     args = parser.parse_args(argv)
     commands = {"validate": validate, "approve": approve, "sync": sync, "archive": archive,
-                "check-specs": check_specs, "check-docs": check_docs}
+                "check-specs": check_specs, "check-docs": check_docs, "stamp": stamp, "fresh": fresh}
     return commands[args.command](args)
 
 
