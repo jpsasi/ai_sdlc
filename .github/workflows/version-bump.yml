@@ -1,0 +1,40 @@
+# Every PR that changes what the plugin ships bumps .claude-plugin/plugin.json's version.
+# The shipped paths match CLAUDE.md's "Version bump" section; change both together.
+name: Version bump
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Shipped changes bump the version
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          shipped=$(git diff --name-only "$BASE"...HEAD \
+            | grep -E '^(skills|agents|scripts|shared|\.claude-plugin)/' \
+            | grep -Ev '^skills/[^/]+/evals/|^scripts/tests/' || true)
+          if [ -z "$shipped" ]; then
+            echo "No shipped files changed; no bump needed."
+            exit 0
+          fi
+          version() { python3 -c 'import json, sys; print(json.load(sys.stdin)["version"])'; }
+          base=$(git show "$BASE:.claude-plugin/plugin.json" | version)
+          head=$(version < .claude-plugin/plugin.json)
+          highest=$(printf '%s\n%s\n' "$base" "$head" | sort -V | tail -n 1)
+          if [ "$head" != "$base" ] && [ "$highest" = "$head" ]; then
+            echo "Version $base -> $head."
+            exit 0
+          fi
+          echo "::error file=.claude-plugin/plugin.json::These shipped files changed, but the version is still $head (main has $base). Bump it, as CLAUDE.md says:"
+          echo "$shipped"
+          exit 1
