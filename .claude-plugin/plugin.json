@@ -1,6 +1,6 @@
 {
   "name": "factory",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A software factory for Claude Code: from requirements to reviewed, test-first PRs, one job at a time.",
   "author": { "name": "Sasikumar JP" }
 }
