@@ -24,7 +24,7 @@ Every stage starts by switching to the job's branch (the working tree must be cl
 | `done` | Stage 6 `ship`, after the merge | Merged, and deployed to the first environment if one is configured |
 | `escalated` | Any stage, or `${CLAUDE_PLUGIN_ROOT}/skills/job/SKILL.md` | Stuck, cancelled, or released to a person. The History says why. |
 
-**Escalating** a job also tells its ticket: comment why on the Jira or GitHub ticket and remove `factory-in-progress`, or with the `local` tracker set the backlog row to `hold` with a note under it. Otherwise the tracker keeps showing the work as in progress.
+**Escalating** a job also tells its ticket: comment why on the Jira or GitHub ticket and remove `factory-in-progress`, and in every tracker set the job's backlog row, if it has one, to `hold` with a note under it. Otherwise the tracker keeps showing the work as in progress.
 
 Once its PR merges, a job's record sits on the target branch, which is protected, so nothing edits it again: a job whose record is on the target branch and whose branch is gone is **done**. Its ticket carries the release from there.
 

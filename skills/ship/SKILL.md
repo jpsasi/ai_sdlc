@@ -24,7 +24,7 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
 3. **Sync and archive**, so the PR carries the final state. Skip this on a re-ship, when the change is already archived.
    1. Run `factory.py sync <id>` when the change has deltas, then `factory.py check-specs`. Both must print OK.
    2. Run `factory.py archive <id>`, and update the `Change:` line of the job record to the archive path.
-   3. With a `local` tracker, set the job's backlog row to `done`, so it takes effect when the PR merges.
+   3. In every tracker, set the job's row in `docs/backlog.md` to `done`, if it has one, so it takes effect when the PR merges. `/factory:next` reads these rows when it checks dependencies, so a row left `in_progress` holds back every task that depends on it.
    4. Commit, with any new results file from the ready check, as `<id>: sync specs and archive`.
 4. **Push** the job branch, as `HOSTS.md` says.
 5. **Open the PR** into the target branch, or update the open one on a re-ship.
