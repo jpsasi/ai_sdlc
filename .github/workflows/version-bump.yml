@@ -21,7 +21,7 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           shipped=$(git diff --name-only "$BASE"...HEAD \
-            | grep -E '^(skills|agents|scripts|shared|\.claude-plugin)/' \
+            | grep -E '^(skills|agents|hooks|scripts|shared|\.claude-plugin)/' \
             | grep -Ev '^skills/[^/]+/evals/|^scripts/tests/' || true)
           if [ -z "$shipped" ]; then
             echo "No shipped files changed; no bump needed."
