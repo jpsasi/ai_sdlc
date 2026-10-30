@@ -52,7 +52,7 @@ foundation ─▶ backlog of tickets
 4. **After a person merges the PR:** run `/factory:ship <KEY>` again. It deletes the branch, waits for the deploy to the first environment, and moves the ticket on.
 5. **When testing passes:** run `/factory:promote` to move everything from one environment to the next, such as dev to QA.
 
-**Where it stops for a person:** approving each foundation step, approving the proposal (spec), settling plan flags, merging the PR, and merging each promotion PR. The factory never approves or merges anything itself.
+**Where it stops for a person:** approving each foundation step, approving the proposal and plan together (spec), merging the PR, and merging each promotion PR. The factory never approves or merges anything itself.
 
 **When things change:** re-run `/factory:foundation` with the changed source when requirements change. It reopens only the affected steps. To try an idea that isn't a requirement yet, use `/factory:spike`. Its findings feed the requirements, and its code never merges.
 
@@ -65,8 +65,8 @@ foundation ─▶ backlog of tickets
 | `/factory:task <description>` | 1 | Turns a bug or task described in chat into a complete ticket |
 | `/factory:next` | 1 | Picks, checks and claims the next ready ticket |
 | `/factory:job [cancel\|retry\|release]` | 1 | Shows or controls the active job |
-| `/factory:spec` | 2 | Writes the OpenSpec proposal and spec deltas: acceptance criteria, impact, release, reproduction for bugs |
-| `/factory:plan` | 3 | Writes `design.md` and test-first `tasks.md` |
+| `/factory:spec` | 2 | Writes the OpenSpec proposal, spec deltas and plan, approved together: acceptance criteria, impact, release, reproduction for bugs, test-first tasks |
+| `/factory:plan` | 3 | Redoes `design.md` and test-first `tasks.md` for a job sent back to planning |
 | `/factory:build` | 4 | Builds the plan in a builder subagent, one commit per step: red, green, commit |
 | `/factory:review` | 5 | Independent review, with security scans on every job and a second, security-only reviewer for security-sensitive ones, which brings in a security expert only for what the standard can't settle; blocking findings go back to build, at most twice |
 | `/factory:ship [job]` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments, and after the merge to delete the branch, follow the deploy and move the ticket |
@@ -88,7 +88,7 @@ The other step skills (`product-sync`, `domain`, `decide`, `architecture`, `skel
 - `.factory/jobs/`: job records
 - `.factory/trusted.md`: who may release tickets to the factory
 
-Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch. Only `ship` pushes, and only `factory/` branches (the job branch, or a revert branch for a rollback). Git hooks installed by `guardrails` enforce this in each clone.
+Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch. Only `ship` pushes, and only `factory/` branches (the job branch, or a revert branch for a rollback). Git hooks that `guardrails` commits in `.factory/hooks/` enforce this, with the branch rules, migration numbering and test-change approvals from `.factory/config.md`; they refuse when they can't decide. The plugin's SessionStart hook enables them in each clone.
 
 ## Checks done by code, not by the model
 
@@ -108,6 +108,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
 agents/           requirements-analyst, architect, planner, investigator, builder, reviewer, security-reviewer
-scripts/          factory.py validator and its tests; git hooks (protected branches, staged secrets scan) and Claude Code hooks (env guard, Stop tests, test lock)
+hooks/            hooks.json: the SessionStart hook that enables the committed git hooks in each clone
+scripts/          factory.py validator and its tests; git hooks (the git guard: branches, migrations, test changes, staged secrets) and Claude Code hooks (env guard, Stop tests, test lock)
 shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, security, domain, ADRs, design, testing, prototypes
 ```
