@@ -104,6 +104,8 @@ A capability that a change touches, but that has no living spec yet, gets one fi
 
 When a later change MODIFIES a baselined requirement, it adds its tags; the Source line may stay.
 
+**Specs that predate the factory.** When a repo already has OpenSpec specs, tagging every requirement is busywork. A capability tag under `## Purpose` (`` `P-3` ``) traces every requirement in that spec at once. Requirements added later by a change still carry their own `<id> AC-n` tags.
+
 ## The tool
 
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" <command>`, run from the repo root:
@@ -113,8 +115,10 @@ When a later change MODIFIES a baselined requirement, it adds its tags; the Sour
 | `validate <id> --stage spec` | The proposal's criteria, test plan and capability. Deltas are well formed, consistent with the living specs, and tagged. |
 | `validate <id> --stage plan` | The above, plus: the approval is current, the design has an approach, and every criterion is covered by a task |
 | `validate <id> --stage build [--results <file>]` | The above, plus: every task is ticked, and every criterion has a test named `<id> AC-n …` that ran |
-| `approve <id> --what proposal --by <name>` | Records who approved the proposal and its deltas, with a hash, so any later edit voids the approval |
+| `approve <id> --what proposal [--by <name>]` | Records who approved the proposal and its deltas, with a hash, so any later edit voids the approval |
 | `sync <id>` | Merges the change's deltas into `openspec/specs/`, or writes nothing if any delta fails to apply |
 | `archive <id>` | Moves the change to `openspec/changes/archive/YYYY-MM-DD-<id>/` |
 | `check-specs` | Every living spec is well formed, and every requirement is traceable, with every Source path existing |
 | `check-docs` | Unique ids in `docs/product.md` and `docs/backlog.md`, valid dependencies, no cycles |
+| `stamp <id>` | Writes `Code tree: <hash>` at the top of `.factory/jobs/<id>-results.txt`: the committed code the suite ran against, leaving out docs, specs, job records and CI config |
+| `fresh <id>` | Prints OK when that hash still matches the code, so review and ship skip re-running the suite. `validate --stage build` refuses stamped results from older code. |

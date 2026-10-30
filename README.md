@@ -4,12 +4,29 @@ A software factory plugin for Claude Code. It turns product requirements into an
 
 ## Install
 
+In Claude Code, from the repo you want to use the factory in:
+
 ```
-/plugin marketplace add <owner>/<repo>
-/plugin install factory@factory
+/plugin marketplace add jpsasi/ai_sdlc
+/plugin install factory@jpsasi
 ```
 
-To try it from a local clone without installing: `claude --plugin-dir /path/to/factory`.
+The marketplace is `jpsasi` and the plugin is `factory`, so commands are `/factory:<name>`. The repo is private: `git clone git@github.com:jpsasi/ai_sdlc.git` must work on your machine first (SSH key or `gh auth login`). Pull later changes with `/plugin marketplace update jpsasi`.
+
+From a local clone instead of GitHub: `/plugin marketplace add /path/to/ai_sdlc`, then the same install.
+
+To try it for one session without installing: `claude --plugin-dir /path/to/ai_sdlc`.
+
+To have a product repo offer the plugin to everyone who opens it, commit this in its `.claude/settings.json`:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "jpsasi": { "source": { "source": "github", "repo": "jpsasi/ai_sdlc" } }
+  },
+  "enabledPlugins": { "factory@jpsasi": true }
+}
+```
 
 ## Needs
 
@@ -77,10 +94,11 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 
 `scripts/factory.py` (tests in `scripts/tests/`):
 - `validate <job> --stage spec|plan|build`: deltas are well formed and fit the living specs; every acceptance criterion is in the test plan, covered by a task, and proven by a test named `<job> AC-n …` that actually ran
-- `approve <job> --what proposal --by <name>`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval
+- `approve <job> --what proposal [--by <name>]`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval
 - `sync` / `archive <job>`: merge a change's deltas into the living specs, and archive the change
 - `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
 - `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles
+- `stamp` / `fresh <job>`: record which code the saved test results came from, so review and ship re-run the suite only when the code changed
 - `scan <job>`: runs the security scans (gitleaks, osv-scanner and semgrep by default), and records which findings the job adds and which were already on the target branch
 - `validate --stage spec` also checks the proposal's Security section: a sensitive proposal names its areas and misuse cases, and a cleared flag names who cleared it and why
 
@@ -90,6 +108,6 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
 agents/           requirements-analyst, architect, planner, investigator, reviewer, security-reviewer
-scripts/          factory.py validator and its tests; git hooks (protected branches, staged secrets scan)
+scripts/          factory.py validator and its tests; git hooks (protected branches, staged secrets scan) and Claude Code hooks (env guard, Stop tests, test lock)
 shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, security, domain, ADRs, design, testing, prototypes
 ```

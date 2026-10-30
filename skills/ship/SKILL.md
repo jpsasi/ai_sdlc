@@ -20,12 +20,12 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
    - `reviewed`: go on to step 2.
    - `pr_open`: read the PR's state. Merged: go to **After the merge** below. Otherwise: go to **PR feedback** below.
    - Anything else: tell the user what to run instead, and stop.
-2. **Ready check.** Merge the latest target branch into the job branch, and resolve any conflicts. In `openspec/specs/`, keep both sides' requirements, then run `check-specs`. Run the full suite, saving its output to `.factory/jobs/<id>-results.txt`. Then run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage build --results .factory/jobs/<id>-results.txt`. Unless it prints OK, the job goes back to `building`.
+2. **Ready check.** Merge the latest target branch into the job branch, and resolve any conflicts. In `openspec/specs/`, keep both sides' requirements, then run `check-specs`. Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" fresh <id>`. When it prints OK, the merge changed no code (only docs, specs, job records or CI config), so the saved results still hold: don't run the suite, and add the History line "ready check: results current, suite not re-run". Otherwise run the full suite, saving its output to `.factory/jobs/<id>-results.txt`, and run `factory.py stamp <id>`. Then run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage build --results .factory/jobs/<id>-results.txt`. Unless it prints OK, the job goes back to `building`.
 3. **Sync and archive**, so the PR carries the final state. Skip this on a re-ship, when the change is already archived.
    1. Run `factory.py sync <id>` when the change has deltas, then `factory.py check-specs`. Both must print OK.
    2. Run `factory.py archive <id>`, and update the `Change:` line of the job record to the archive path.
-   3. With a `local` tracker, set the job's backlog row to `done`, so it takes effect when the PR merges.
-   4. Commit as `<id>: sync specs and archive`.
+   3. In every tracker, set the job's row in `docs/backlog.md` to `done`, if it has one, so it takes effect when the PR merges. `/factory:next` reads these rows when it checks dependencies, so a row left `in_progress` holds back every task that depends on it.
+   4. Commit, with any new results file from the ready check, as `<id>: sync specs and archive`.
 4. **Push** the job branch, as `HOSTS.md` says.
 5. **Open the PR** into the target branch, or update the open one on a re-ship.
    - **Title:** `<ticket id> <ticket title>`.

@@ -5,6 +5,10 @@ set -f
 protected=$(. "$(dirname "$0")/factory-protected.sh")
 while read -r local_ref local_sha remote_ref remote_sha; do
   branch=${remote_ref#refs/heads/}
+  # Creating a branch the remote lacks is fine when it carries no unpushed commits.
+  case "$remote_sha" in *[!0]*) ;; *)
+    [ -n "$(git branch -r --contains "$local_sha" 2>/dev/null)" ] && continue ;;
+  esac
   for p in $protected; do
     case "$branch" in
       $p)

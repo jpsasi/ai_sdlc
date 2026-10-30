@@ -3,11 +3,13 @@
 
 Run from the product repo root:
   factory.py validate <id> --stage spec|plan|build [--results <test-output-file>]
-  factory.py approve <id> --what proposal --by "<name>"
+  factory.py approve <id> --what proposal [--by "<name>"]   (default: git config user.name)
   factory.py sync <id>
   factory.py archive <id>
   factory.py check-specs
   factory.py check-docs
+  factory.py stamp <id>     record the code the results file was run against
+  factory.py fresh <id>     exit 0 when the results file is still current
   factory.py scan <id>      run the config's security scans, and save which findings the job adds
 
 Prints OK (or what it did) and exits 0, or lists every problem and exits 1. scan exits 1 when the
@@ -33,6 +35,7 @@ RUNS = Path(".factory/runs")  # local scan output, kept out of git
 AC = re.compile(r"\bAC-\d+\b")
 STEP = re.compile(r"^- \[( |x)\] (\d+)\.(.*)$")
 REQ = "### Requirement: "
+CAPABILITY_TAG = re.compile(r"`(?:P|K|NFR)-\d+`")
 TAG = re.compile(r"`((?:P|K|NFR)-\d+|[A-Za-z][A-Za-z0-9-]* AC-\d+)`")
 NORMATIVE = re.compile(r"\b(SHALL|MUST)\b")
 DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED", "RENAMED")
@@ -40,6 +43,9 @@ TEST_PATH = re.compile(r"(^|/)(tests?|spec|specs|__tests__)/|(^|/)test_[^/]*$|_t
 NOT_TESTS = ("docs/", "openspec/", ".factory/")
 SCANS = ("Secrets", "Dependencies", "Code scan")  # Commands table rows, by shared/SECURITY.md
 ADVISORY = re.compile(r"\b(?:GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}|(?:CVE|PYSEC|GO|RUSTSEC|OSV|MAL)-\d{4}-\d+)\b")
+# Paths whose changes can't change a test result, so they leave a results file current.
+NOT_CODE = NOT_TESTS + (".github/", ".azure-pipelines/", "azure-pipelines.yml")
+STAMP = "Code tree: "
 
 
 class Problem(Exception):
@@ -48,9 +54,16 @@ class Problem(Exception):
 
 # ---------- reading ----------
 
-def read(path):
+def read(path, errors="strict"):
+    """The file's text, or None when it doesn't exist. Docs and specs must be UTF-8;
+    test files pass errors="replace", since binary fixtures live beside them."""
     p = Path(path)
-    return p.read_text(encoding="utf-8").replace("\r\n", "\n") if p.is_file() else None
+    if not p.is_file():
+        return None
+    try:
+        return p.read_text(encoding="utf-8", errors=errors).replace("\r\n", "\n")
+    except UnicodeDecodeError as e:
+        raise Problem(f"{path} is not valid UTF-8 (byte {e.start})") from None
 
 
 def section(text, heading):
@@ -334,20 +347,57 @@ def check_tasks(cdir, acs, problems):
     return steps
 
 
+def ac_test_name(job, ac):
+    """Matches '<job> AC-n' as written, or as an identifier: REF-12 AC-2 -> test_ref12_ac2_..., TestREF12AC2..."""
+    ident = re.sub(r"[^A-Za-z0-9]", "", job) + r"_?ac_?" + ac.split("-")[1]
+    return re.compile(rf"{re.escape(job)} {ac}(?!\d)|(?<![0-9]){ident}(?!\d)", re.IGNORECASE)
+
+
 def check_build(job, acs, steps, results, problems):
     for number, ticked, _ in steps:
         if not ticked:
             problems.append(f"task {number} is not ticked")
-    corpus = "\n".join(read(f) or "" for f in tracked_test_files())
-    output = read(results) if results else None
+    corpus = "\n".join(read(f, errors="replace") or "" for f in tracked_test_files())
+    output = read(results, errors="replace") if results else None
     if results and output is None:
         problems.append(f"results file {results} not found")
+    if output is not None:
+        saved, tree = results_stamp(output), code_tree()
+        if saved and tree and saved != tree:
+            problems.append(f"results are from older code ({saved}, now {tree}): run the suite again")
     for ac in acs:
-        tag = f"{job} {ac}"
-        if tag not in corpus:
+        tag, name = f"{job} {ac}", ac_test_name(job, ac)
+        if not name.search(corpus):
             problems.append(f"no test named '{tag} ...' in the test files")
-        elif output is not None and tag not in output:
+        elif output is not None and not name.search(output):
             problems.append(f"test '{tag}' does not appear in the test results: did it run?")
+
+
+def is_code(path):
+    return not path.startswith(NOT_CODE) and not path.endswith(".md")
+
+
+def git_out(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+
+
+def code_tree():
+    """Hash of the code at HEAD, without docs, specs, job records and CI config.
+    None when there are uncommitted code changes, or outside git."""
+    try:
+        status = git_out("status", "--porcelain", "--untracked-files=all")
+        tree = git_out("ls-tree", "-r", "HEAD")
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    if any(is_code(line[3:].split(" -> ")[-1].strip('"')) for line in status.split("\n") if line):
+        return None
+    code = [line for line in tree.split("\n") if line and is_code(line.split("\t", 1)[1])]
+    return hashlib.sha256("\n".join(code).encode("utf-8")).hexdigest()[:16]
+
+
+def results_stamp(text):
+    first = text.split("\n", 1)[0]
+    return first[len(STAMP):].strip() if first.startswith(STAMP) else None
 
 
 def validate(args):
@@ -362,6 +412,37 @@ def validate(args):
     return report(problems)
 
 
+def stamp(args):
+    path = JOBS / f"{args.job}-results.txt"
+    text, tree = read(path, errors="replace"), code_tree()
+    if text is None:
+        print(f"{path} not found: save the test output there first", file=sys.stderr)
+        return 2
+    if tree is None:
+        print("uncommitted code changes: commit them, then run the suite and stamp", file=sys.stderr)
+        return 2
+    if results_stamp(text) is not None:
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+    path.write_text(f"{STAMP}{tree}\n{text}", encoding="utf-8")
+    print(f"stamped {path}: {tree}")
+    return 0
+
+
+def fresh(args):
+    path = JOBS / f"{args.job}-results.txt"
+    text = read(path, errors="replace")
+    if text is None:
+        return report([f"{path} not found"])
+    saved, tree = results_stamp(text), code_tree()
+    if saved is None:
+        return report([f"{path} is not stamped"])
+    if tree is None:
+        return report(["uncommitted code changes"])
+    if saved != tree:
+        return report([f"code changed since the results were saved ({saved}, now {tree})"])
+    return report([])
+
+
 # ---------- security scans ----------
 
 def config_commands(text):
@@ -372,10 +453,6 @@ def config_commands(text):
         if line.startswith("|") and len(cells) > 1 and not re.match(r"^[\s:-]*$", cells[0]):
             out[cells[0]] = cells[1].replace("\\|", "|")
     return out
-
-
-def git_out(*args):
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
 
 def run_scan(command, cwd=None):
@@ -465,6 +542,13 @@ def scan(args):
 
 # ---------- approve, sync, archive ----------
 
+def git_user():
+    try:
+        return subprocess.run(["git", "config", "user.name"], capture_output=True, text=True).stdout.strip()
+    except OSError:
+        return ""
+
+
 def approve(args):
     if args.what != "proposal":
         print("only 'proposal' approvals are recorded", file=sys.stderr)
@@ -475,8 +559,12 @@ def approve(args):
         print(f"need {cdir}/proposal.md and {record_path}", file=sys.stderr)
         return 2
     record = read(record_path)
+    by = args.by or git_user()
+    if not by:
+        print("no --by given, and git config user.name is not set", file=sys.stderr)
+        return 2
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    entry = f"- proposal {approval_hash(cdir)} by {args.by} at {stamp}"
+    entry = f"- proposal {approval_hash(cdir)} by {by} at {stamp}"
     if "\n## Approvals" not in "\n" + record:
         record = record.rstrip("\n") + "\n\n## Approvals\n"
     lines = record.rstrip("\n").split("\n")
@@ -539,11 +627,12 @@ def check_specs(_args):
             if f"\n{heading}" not in "\n" + text:
                 problems.append(f"{where}: no '{heading}' section")
         _, reqs, _ = split_main(text)
+        spec_traced = bool(CAPABILITY_TAG.search("\n".join(section(text, "Purpose"))))
         names = [n for n, _ in reqs]
         for name in sorted({n for n in names if names.count(n) > 1}):
             problems.append(f"{where}: duplicate requirement '{name}'")
         for name, block in reqs:
-            problems += requirement_problems(where, name, block)
+            problems += requirement_problems(where, name, block, need_trace=not spec_traced)
             for line in block.split("\n"):
                 if line.startswith("Source:"):
                     for kind, ref in re.findall(r"\b(test|code|imported)\s+`([^`]+)`", line):
@@ -624,17 +713,22 @@ def main(argv=None):
     a = sub.add_parser("approve", help="record a person's approval of the proposal and its deltas")
     a.add_argument("job")
     a.add_argument("--what", required=True)
-    a.add_argument("--by", required=True)
+    a.add_argument("--by", help="who approved; defaults to git config user.name")
     for name, text in (("sync", "merge the change's deltas into openspec/specs"),
-                       ("archive", "move the change to openspec/changes/archive")):
+                       ("archive", "move the change to openspec/changes/archive"),
+                       ("stamp", "record the code the job's results file was run against"),
+                       ("fresh", "check the job's results file still matches the code")):
         sub.add_parser(name, help=text).add_argument("job")
     sub.add_parser("check-specs", help="check every living spec is well formed and traceable")
     sub.add_parser("check-docs", help="check ids and dependencies in docs/product.md and docs/backlog.md")
     sub.add_parser("scan", help="run the security scans, and save which findings the job adds").add_argument("job")
     args = parser.parse_args(argv)
     commands = {"validate": validate, "approve": approve, "sync": sync, "archive": archive,
-                "check-specs": check_specs, "check-docs": check_docs, "scan": scan}
-    return commands[args.command](args)
+                "check-specs": check_specs, "check-docs": check_docs, "stamp": stamp, "fresh": fresh, "scan": scan}
+    try:
+        return commands[args.command](args)
+    except Problem as e:
+        return report([str(e)])
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import factory  # noqa: E402
@@ -208,6 +209,37 @@ class FactoryTest(unittest.TestCase):
         self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"),
                            "'REF-12 AC-2' does not appear in the test results")
 
+    def test_build_ignores_binary_test_fixtures(self):
+        self.approve()
+        Path("tests/fixtures").mkdir(parents=True)
+        Path("tests/fixtures/data.csv.zip").write_bytes(b"PK\x03\x04\xff\xfe\x80 binary")
+        self.write("out.txt", "PASS REF-12 AC-1 applies once\nPASS REF-12 AC-2 retry is idempotent\n")
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
+
+    def test_badly_encoded_spec_is_reported(self):
+        Path("openspec/specs/referral-credit/spec.md").write_bytes(LIVING.encode("utf-8") + b"\xf6\n")
+        self.assertProblem(self.run_cli("check-specs"), "openspec/specs/referral-credit/spec.md is not valid UTF-8")
+
+    def test_build_reads_results_with_stray_bytes(self):
+        self.approve()
+        Path("out.txt").write_bytes(b"PASS REF-12 AC-1 applies once \xf6\nPASS REF-12 AC-2 retry is idempotent\n")
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
+
+    def test_build_accepts_identifier_style_names(self):
+        # pytest, Go, Rust and JUnit names can't hold spaces or dashes
+        self.approve()
+        self.write("tests/test_credit.py", "def test_ref12_ac1_applies_once(): ...\ndef test_REF12_AC2_retry(): ...\n")
+        self.write("tests/credit.test.ts", "")
+        self.write("out.txt", "tests/test_credit.py::test_ref12_ac1_applies_once PASSED\n"
+                              "tests/test_credit.py::test_REF12_AC2_retry PASSED\n")
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
+
+    def test_identifier_style_names_need_the_exact_criterion(self):
+        self.approve()
+        self.write("tests/test_credit.py", "def test_ref12_ac1_applies_once(): ...\nfunc TestREF12AC21Other() {}\n")
+        self.write("tests/credit.test.ts", "")
+        self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "build"), "no test named 'REF-12 AC-2 ...'")
+
     # sync, archive, check-specs
 
     def test_sync_applies_delta_then_archive(self):
@@ -262,6 +294,32 @@ The engine SHALL do something.
         self.assertIn("cites test `tests/rates.test.ts:88`, which doesn't exist", out)
         self.assertIn("'Untraced' has no tag and no Source line", out)
 
+    def test_check_specs_capability_tag_under_purpose_traces_every_requirement(self):
+        spec = """# Rates Specification
+
+## Purpose
+Rates, from before the factory. `{tag}`
+
+## Requirements
+
+### Requirement: Symbol rate wins
+The engine SHALL use the symbol rate first.
+
+#### Scenario: Own rate
+- **WHEN** EURUSD has its own rate
+- **THEN** it is used
+"""
+        self.write("openspec/specs/rates/spec.md", spec.format(tag="P-1"))
+        self.assertEqual(self.run_cli("check-specs"), (0, "OK\n"))
+        self.write("openspec/specs/rates/spec.md", spec.format(tag="REF-12 AC-1"))
+        self.assertProblem(self.run_cli("check-specs"), "'Symbol rate wins' has no tag and no Source line")
+
+    def test_approve_defaults_to_git_user(self):
+        with mock.patch.object(factory, "git_user", return_value="Sasikumar JP"):
+            code, out = self.run_cli("approve", "REF-12", "--what", "proposal")
+        self.assertEqual(code, 0)
+        self.assertIn("by Sasikumar JP at", Path(".factory/jobs/REF-12.md").read_text())
+
     def test_approve_and_validate_after_archive(self):
         self.approve()
         self.run_cli("sync", "REF-12")
@@ -269,6 +327,52 @@ The engine SHALL do something.
         self.write("out.txt", "PASS REF-12 AC-1\nPASS REF-12 AC-2\n")
         self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "build", "--results", "out.txt"), (0, "OK\n"))
         self.assertEqual(self.approve()[0], 0)
+
+    # stamp, fresh
+
+    def git(self, *args):
+        subprocess.run(["git", *args], check=True, capture_output=True)
+
+    def commit_all(self):
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x")
+
+    def stamped_results(self):
+        self.git("init", "-q")
+        self.commit_all()
+        self.write(".factory/jobs/REF-12-results.txt", "PASS REF-12 AC-1 applies once\nPASS REF-12 AC-2 retry is idempotent\n")
+        self.assertEqual(self.run_cli("stamp", "REF-12")[0], 0)
+
+    def test_results_stay_fresh_when_only_docs_specs_and_ci_change(self):
+        self.stamped_results()
+        self.write("docs/notes.md", "more")
+        self.write(".github/workflows/ci.yml", "on: push")
+        self.write(f"{C}/review.md", "# Review")
+        self.commit_all()
+        self.assertEqual(self.run_cli("fresh", "REF-12")[0], 0)
+
+    def test_results_go_stale_when_code_changes(self):
+        self.stamped_results()
+        self.write("src/credit.ts", "export const x = 1;")
+        self.assertProblem(self.run_cli("fresh", "REF-12"), "uncommitted code changes")
+        self.commit_all()
+        self.assertProblem(self.run_cli("fresh", "REF-12"), "code changed since the results were saved")
+        self.approve()
+        self.assertProblem(
+            self.run_cli("validate", "REF-12", "--stage", "build", "--results", ".factory/jobs/REF-12-results.txt"),
+            "results are from older code")
+
+    def test_restamping_replaces_the_stamp(self):
+        self.stamped_results()
+        self.write("src/credit.ts", "export const x = 1;")
+        self.commit_all()
+        self.assertEqual(self.run_cli("stamp", "REF-12")[0], 0)
+        self.assertEqual(self.run_cli("fresh", "REF-12")[0], 0)
+        self.assertEqual(Path(".factory/jobs/REF-12-results.txt").read_text().count("Code tree:"), 1)
+
+    def test_unstamped_results_are_not_fresh(self):
+        self.write(".factory/jobs/REF-12-results.txt", "PASS\n")
+        self.assertProblem(self.run_cli("fresh", "REF-12"), "not stamped")
 
     # check-docs
 
