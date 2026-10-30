@@ -67,7 +67,7 @@ foundation ─▶ backlog of tickets
 | `/factory:job [cancel\|retry\|release]` | 1 | Shows or controls the active job |
 | `/factory:spec` | 2 | Writes the OpenSpec proposal and spec deltas: acceptance criteria, impact, release, reproduction for bugs |
 | `/factory:plan` | 3 | Writes `design.md` and test-first `tasks.md` |
-| `/factory:build` | 4 | Builds the plan step by step: red, green, commit |
+| `/factory:build` | 4 | Builds the plan in a builder subagent, one commit per step: red, green, commit |
 | `/factory:review` | 5 | Independent review, with security scans on every job and a second, security-only reviewer for security-sensitive ones, which brings in a security expert only for what the standard can't settle; blocking findings go back to build, at most twice |
 | `/factory:ship [job]` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments, and after the merge to delete the branch, follow the deploy and move the ticket |
 | `/factory:promote [from] [to]` | 6 | On request: promotes one environment's branch to the next, follows the deploy, moves the tickets |
@@ -107,7 +107,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 ```
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
-agents/           requirements-analyst, architect, planner, investigator, reviewer, security-reviewer
+agents/           requirements-analyst, architect, planner, investigator, builder, reviewer, security-reviewer
 scripts/          factory.py validator and its tests; git hooks (protected branches, staged secrets scan) and Claude Code hooks (env guard, Stop tests, test lock)
 shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, security, domain, ADRs, design, testing, prototypes
 ```
