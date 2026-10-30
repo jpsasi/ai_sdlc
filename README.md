@@ -88,7 +88,7 @@ The other step skills (`product-sync`, `domain`, `decide`, `architecture`, `skel
 - `.factory/jobs/`: job records
 - `.factory/trusted.md`: who may release tickets to the factory
 
-Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch. Only `ship` pushes, and only `factory/` branches (the job branch, or a revert branch for a rollback). Git hooks installed by `guardrails` enforce this in each clone.
+Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundation`. The factory commits there, never on the default branch. Only `ship` pushes, and only `factory/` branches (the job branch, or a revert branch for a rollback). Git hooks that `guardrails` commits in `.factory/hooks/` enforce this, with the branch rules, migration numbering and test-change approvals from `.factory/config.md`; they refuse when they can't decide. The plugin's SessionStart hook enables them in each clone.
 
 ## Checks done by code, not by the model
 
@@ -108,6 +108,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
 agents/           requirements-analyst, architect, planner, investigator, builder, reviewer, security-reviewer
-scripts/          factory.py validator and its tests; git hooks (protected branches, staged secrets scan) and Claude Code hooks (env guard, Stop tests, test lock)
+hooks/            hooks.json: the SessionStart hook that enables the committed git hooks in each clone
+scripts/          factory.py validator and its tests; git hooks (the git guard: branches, migrations, test changes, staged secrets) and Claude Code hooks (env guard, Stop tests, test lock)
 shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, security, domain, ADRs, design, testing, prototypes
 ```

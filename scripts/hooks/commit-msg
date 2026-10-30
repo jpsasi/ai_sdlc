@@ -1,0 +1,5 @@
+#!/bin/sh
+# Factory git hook: runs the factory's git guard (.factory/hooks/factory-git-guard.py).
+# Enabled per clone with: git config core.hooksPath .factory/hooks (the plugin's SessionStart hook does it)
+command -v python3 >/dev/null 2>&1 || { echo "factory: python3 is missing, so the git guard can't run; refusing." >&2; exit 1; }
+exec python3 -I "$(dirname "$0")/factory-git-guard.py" "$(basename "$0")" "$@"

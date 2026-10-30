@@ -40,6 +40,23 @@ Expert: @acme/security
 |----------------|------|
 | src/payments/** | money movement |
 | src/auth/** | authentication |
+
+## Branches
+| Branch | Rule |
+|--------|------|
+| qa | protected |
+| release/* | protected |
+| staging | retired |
+
+## Migrations
+| Folder | File name |
+|--------|-----------|
+| db/migration | V<n>__*.sql |
+
+## Commit message bans
+| Pattern | Why |
+|---------|-----|
+| `\bINTERNAL-\d+\b` | internal ticket ids stay out of the public history |
 ```
 
 - **Target branch** is where job PRs merge. Jobs branch from it, and it is usually the first environment's branch.
@@ -47,6 +64,9 @@ Expert: @acme/security
 - **Pipeline** is a GitHub Actions workflow name or file, or an Azure Pipelines pipeline name. Leave it empty for an environment with no automated deploy.
 - **Ticket status** names are the tracker's own (Jira statuses, or GitHub labels). Leave a row empty to leave the ticket as it is.
 - **Commands** are the security scans, by `${CLAUDE_PLUGIN_ROOT}/shared/SECURITY.md`. `<base>` is filled in with the merge base of the job branch and the target branch. Write a `|` inside a command as `\|`. Every repo has all four rows; Dependencies may be `none` in a repo with no dependencies.
+- **Branches** the git hooks guard, beyond the default and target branches, which are always protected. `protected`: changes only by pull request. `frozen`: kept as it is; nothing new goes on it. `retired`: no longer used; nothing branches from it. A name may be a pattern, such as `release/*`.
+- **Migrations:** one row per migration folder. In the file name, `<n>` is the version (digits, with `.` or `_` between parts) and `*` any text. Leave the table empty when the repo has no migrations.
+- **Commit message bans:** regular expressions no commit message may match, each with the reason the hook shows. Write a `|` inside a pattern as `\|`. Usually empty.
 - **Security:** *Expert* is the group of security experts a job is escalated to when the security reviewer finds something the standard can't settle: an Azure DevOps group (`[<project>]\<group>`) or a GitHub team (`@<org>/<team>`). *Sensitive paths* are this repo's code in a sensitive area, as glob patterns. A job that touches one is always flagged.
 
 ## Setup
@@ -60,5 +80,5 @@ Ask only for values the file doesn't have yet: foundation already sets the host,
 5. **Environments.** Ask which environments exist, in order. Each one needs its branch (confirm it exists), its deploy pipeline (offer the host's pipeline list from `HOSTS.md`), and the ticket status after a deploy (offer the tracker's statuses). "None" is a valid answer.
 6. **Ticket statuses** for "PR open" and for "Merged, no environment".
 7. **Security expert.** Ask for the group of security experts that jobs are escalated to. Check it exists, and never take a single person's name: `az devops security group list --project <project>` on Azure, `gh api orgs/<org>/teams/<team>` on GitHub.
-8. **Protect** the target branch and every environment branch: `git config --add factory.protected <branch>` for each one not already listed, so the factory's git hooks guard them.
+8. **Protect** every environment branch: add each to the Branches table as `protected`, if it isn't listed, so the factory's git hooks guard it in every clone.
 9. **Write** `.factory/config.md` on the current branch, show it to the developer, and commit it as `config: delivery setup`.
