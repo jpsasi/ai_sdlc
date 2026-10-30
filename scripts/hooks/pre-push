@@ -1,20 +1,5 @@
 #!/bin/sh
-# Factory: protected branches change only through pull requests. This hook guards one clone;
-# the hosting service's branch protection is the real control.
-set -f
-protected=$(. "$(dirname "$0")/factory-protected.sh")
-while read -r local_ref local_sha remote_ref remote_sha; do
-  branch=${remote_ref#refs/heads/}
-  # Creating a branch the remote lacks is fine when it carries no unpushed commits.
-  case "$remote_sha" in *[!0]*) ;; *)
-    [ -n "$(git branch -r --contains "$local_sha" 2>/dev/null)" ] && continue ;;
-  esac
-  for p in $protected; do
-    case "$branch" in
-      $p)
-        echo "factory: push to '$branch' is blocked; open a pull request instead." >&2
-        exit 1 ;;
-    esac
-  done
-done
-exit 0
+# Factory git hook: runs the factory's git guard (.factory/hooks/factory-git-guard.py).
+# Enabled per clone with: git config core.hooksPath .factory/hooks (the plugin's SessionStart hook does it)
+command -v python3 >/dev/null 2>&1 || { echo "factory: python3 is missing, so the git guard can't run; refusing." >&2; exit 1; }
+exec python3 -I "$(dirname "$0")/factory-git-guard.py" "$(basename "$0")" "$@"
