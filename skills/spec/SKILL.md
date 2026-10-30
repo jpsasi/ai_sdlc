@@ -14,13 +14,14 @@ Stage 2 of the factory. Turn the active job's ticket into an OpenSpec change, `o
    - Status `queued`: set it to `speccing`.
    - Status `speccing`: resume from any existing `openspec/changes/<id>/`.
    - Any other status, or no active job: tell the user what to run instead (`/factory:next`, or the stage that owns the status), and stop.
-2. **Investigate.** Dispatch the `factory:investigator` subagent with the job record, the Stage 0 document paths, and `openspec/specs/`. It returns the capabilities involved, impact, architecture fit, size, gaps, and, for bugs, a reproduction.
+2. **Investigate.** Dispatch the `factory:investigator` subagent with the job record, the Stage 0 document paths, `openspec/specs/`, and `.factory/config.md`. It returns the capabilities involved, impact, architecture fit, size, gaps, security, and, for bugs, a reproduction.
 3. **Resolve what it found**, in this order:
    1. **A bug that is really a requirement change:** compare the behaviour the bug expects with the living specs, `docs/product.md` and its clarifications. When the bug expects something the product doesn't say (new behaviour, or a different rule), it isn't a defect. Tell the user it goes through the requirements: update the source, then run `/factory:foundation` to re-sync. Comment that on the ticket, set the job to `escalated` with "requirement change", and stop.
    2. **Bug not reproduced** (or `partial`): ask the user for what the investigator says would help, and re-run the reproduction. If it still doesn't reproduce, offer to escalate: comment on the ticket with what was tried, swap its `factory-in-progress` for `factory-needs-info`, and set the job to `escalated`. A bug that doesn't reproduce never reaches planning. For a **reopened** bug, also read why it was reopened and the earlier job's archived change, and say in the proposal why the earlier fix missed.
    3. **Architecture conflict:** follow `${CLAUDE_PLUGIN_ROOT}/skills/decide/SKILL.md` with the user now, and `${CLAUDE_PLUGIN_ROOT}/skills/architecture/SKILL.md` if the module structure changes. If the user defers the decision, set the job to `escalated` with "needs ADR: <topic>".
    4. **Too big:** show the investigator's slices, and agree them with the user. This ticket keeps the first slice: narrow its title and acceptance criteria to match. Create a ticket for each other slice, in the way `${CLAUDE_PLUGIN_ROOT}/skills/backlog/SKILL.md` does (priority, `P-n`, dependency on this ticket, `factory-ready`, and a row in `docs/backlog.md`). List them before creating them.
-   5. **Gaps:** grill the user by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`, starting with the investigator's questions. An answer that changes what a capability does is also recorded as a `C-n` in `docs/product.md`, the way `${CLAUDE_PLUGIN_ROOT}/skills/product-sync/SKILL.md` records Answered questions.
+   5. **Security-sensitive:** when the investigator reports `sensitive`, flag the proposal by `${CLAUDE_PLUGIN_ROOT}/shared/SECURITY.md`. Agree the misuse cases with the user, starting from the investigator's, and add them as acceptance criteria with tests in the test plan. A user who thinks the flag is wrong may clear it, with their name and reason, by `SECURITY.md`.
+   6. **Gaps:** grill the user by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`, starting with the investigator's questions. An answer that changes what a capability does is also recorded as a `C-n` in `docs/product.md`, the way `${CLAUDE_PLUGIN_ROOT}/skills/product-sync/SKILL.md` records Answered questions.
 4. **Baseline what's missing.** Each capability the change touches that has no living spec in `openspec/specs/` gets one now, describing today's behaviour before the change, by *Baselining a capability* in `OPENSPEC.md`. Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" check-specs` until it prints OK.
 5. **Write the change.**
    - `openspec/changes/<id>/proposal.md`, in the format below.
@@ -67,6 +68,10 @@ Fits | Resolved by ADR-<n>
 Result: reproduced · Steps: <commands> · Evidence: <output>
 Suspected cause: <file:line> (hypothesis)
 
+## Security
+Sensitive: no | yes — <areas, from SECURITY.md> | cleared by <name> — <reason>
+Misuse cases: <the criteria that prove them, e.g. AC-3, AC-4; only when Sensitive is yes>
+
 ## Release
 Migrations: <none | each one, how the previous release keeps working against it, and its rollback>
 Config: <none | each new setting, for every environment; secrets name their store, never their value>
@@ -87,4 +92,5 @@ Every test that proves a criterion is named `<id> AC-n <behaviour>` (for example
 - The work fits one PR, or has been split.
 - No gap is left open.
 - The Release section names every migration and config change, or says none.
+- The Security section follows the investigator's finding: a flagged proposal names its areas and lists its misuse cases, and a cleared flag names who cleared it and why.
 - `factory.py validate <id> --stage spec` and `check-specs` print OK, and the approval is recorded.

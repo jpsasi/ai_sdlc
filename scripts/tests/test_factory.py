@@ -27,6 +27,9 @@ Ticket: REF-12 · Kind: bug · Delivers: P-1 · Priority: high
 - AC-1 Given a cart with credit, when checkout submits, then credit applies once
 - AC-2 Given a retried order, when it submits again, then credit is not applied again
 
+## Security
+Sensitive: no
+
 ## Test plan
 - AC-1 → tests/credit.test.ts — "REF-12 AC-1 applies once"
 - AC-2 → tests/credit.test.ts — "REF-12 AC-2 retry is idempotent"
@@ -393,6 +396,100 @@ The engine SHALL use the symbol rate first.
 
     def test_check_docs_ok(self):
         self.assertEqual(self.run_cli("check-docs"), (0, "OK\n"))
+
+    # security
+
+    def test_proposal_needs_a_security_section(self):
+        self.write(f"{C}/proposal.md", PROPOSAL.replace("## Security\nSensitive: no\n", ""))
+        self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "spec"), "no '## Security' section")
+
+    def test_sensitive_proposal_names_its_areas_and_misuse_cases(self):
+        self.write(f"{C}/proposal.md", PROPOSAL.replace("Sensitive: no", "Sensitive: yes"))
+        result = self.run_cli("validate", "REF-12", "--stage", "spec")
+        self.assertProblem(result, "names its areas")
+        self.assertProblem(result, "lists its misuse cases")
+        self.write(f"{C}/proposal.md", PROPOSAL.replace("Sensitive: no", "Sensitive: yes — money movement\nMisuse cases: AC-2, AC-7"))
+        self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "spec"), "misuse case AC-7 isn't an acceptance criterion")
+        self.write(f"{C}/proposal.md", PROPOSAL.replace("Sensitive: no", "Sensitive: yes — money movement\nMisuse cases: AC-2"))
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "spec"), (0, "OK\n"))
+
+    def test_a_cleared_flag_names_who_and_why(self):
+        self.write(f"{C}/proposal.md", PROPOSAL.replace("Sensitive: no", "Sensitive: cleared"))
+        self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "spec"), "names who cleared it")
+        self.write(f"{C}/proposal.md", PROPOSAL.replace("Sensitive: no", "Sensitive: cleared by Priya — reads its own balance only"))
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "spec"), (0, "OK\n"))
+
+    # scan
+
+    SCANS = ".factory/runs/REF-12-scans.txt"
+
+    def git(self, *args):
+        subprocess.run(["git", *args], check=True, capture_output=True)
+
+    def commit_all(self):
+        self.git("add", "-A")
+        self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x")
+
+    def scan_repo(self, deps="sh deps.sh", secrets="true", code="true"):
+        """A repo on main, a job branch on top; deps.sh prints the advisories in deps.txt."""
+        self.git("init", "-q", "-b", "main")
+        self.write(".factory/config.md", "Target branch: main\n\n## Commands\n| Command | Run |\n|---|---|\n"
+                   f"| Secrets | {secrets} |\n| Dependencies | {deps} |\n| Code scan | {code} |\n")
+        self.write("deps.sh", "[ -s deps.txt ] || exit 0; cat deps.txt; exit 1\n")
+        self.write("deps.txt", "")
+        self.commit_all()
+        self.git("checkout", "-qb", "factory/REF-12")
+
+    def test_scan_counts_only_the_advisories_the_job_adds(self):
+        self.scan_repo()
+        self.write("deps.txt", "lodash GHSA-35jh-r3h4-6jhm\n")
+        self.git("checkout", "-q", "main"); self.commit_all(); self.git("checkout", "-q", "factory/REF-12")
+        self.git("merge", "-q", "main")
+        self.assertEqual(self.run_cli("scan", "REF-12")[0], 0)
+        self.assertIn("Dependencies: no new findings (1 advisory ids known on main)", Path(self.SCANS).read_text())
+        self.write("deps.txt", "lodash GHSA-35jh-r3h4-6jhm\nminimist CVE-2021-44906\n")
+        self.commit_all()
+        code, out = self.run_cli("scan", "REF-12")
+        self.assertEqual(code, 1)
+        self.assertIn("Dependencies: new: CVE-2021-44906 (1 advisory ids known on main)", out)
+
+    def test_scan_passes_the_merge_base_and_flags_new_findings(self):
+        self.scan_repo(secrets="test -n '<base>' && git cat-file -e <base> && exit 1")
+        code, out = self.run_cli("scan", "REF-12")
+        self.assertEqual(code, 1)
+        self.assertIn("Secrets: new findings", out)
+        self.assertIn("Code scan: clean", out)
+
+    def test_a_repo_without_dependencies_skips_that_scan(self):
+        self.scan_repo(deps="none")
+        self.assertEqual(self.run_cli("scan", "REF-12"),
+                         (0, "Secrets: clean\nDependencies: none, the repo has no dependencies\nCode scan: clean\n"
+                             f"saved to {self.SCANS}\n"))
+
+    def test_scan_output_is_never_committed(self):
+        self.scan_repo()
+        self.run_cli("scan", "REF-12")
+        self.git("add", "-A")
+        staged = subprocess.run(["git", "diff", "--cached", "--name-only"], capture_output=True, text=True).stdout
+        self.assertNotIn(".factory/runs/", staged)
+
+    def test_scan_fails_closed(self):
+        self.scan_repo(code="no-such-scanner --error")
+        code, out = self.run_cli("scan", "REF-12")
+        self.assertEqual(code, 2)
+        self.assertIn("Code scan: can't run", out)
+        self.assertIn("no-such-scanner is missing", Path(self.SCANS).read_text())
+
+    def test_scan_without_setup_cant_run_rather_than_finding_something(self):
+        self.scan_repo()
+        self.write(".factory/config.md", "Target branch: main\n")
+        self.assertEqual(self.run_cli("scan", "REF-12"),
+                         (2, "- no Secrets, Dependencies, Code scan command in .factory/config.md: run /factory:guardrails\n"))
+        self.write(".factory/config.md", (Path(".factory/config.md").read_text() + "\n## Commands\n| Secrets | true |\n"
+                                          "| Dependencies | none |\n| Code scan | true |\n").replace("Target branch: main\n", ""))
+        code, out = self.run_cli("scan", "REF-12")
+        self.assertEqual(code, 2)
+        self.assertIn("no Target branch", out)
 
 
 if __name__ == "__main__":

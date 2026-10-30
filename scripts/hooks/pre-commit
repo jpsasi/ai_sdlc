@@ -2,14 +2,40 @@
 # Factory: commits go on work branches (factory/<id>, factory/foundation, prototype/<topic> ...),
 # never on the default branch or a protected one. Solo repos can opt out:
 #   git config factory.allowDefaultBranch true
+# Every commit is then scanned for secrets, with the Secrets (staged) row of .factory/config.md.
 set -f
-[ "$(git config --get factory.allowDefaultBranch)" = "true" ] && exit 0
-branch=$(git symbolic-ref --short HEAD 2>/dev/null) || exit 0   # detached HEAD (rebase etc.)
-for p in $(. "$(dirname "$0")/factory-protected.sh"); do
-  case "$branch" in
-    $p)
-      echo "factory: '$branch' is protected; commit on a work branch, e.g. git switch -c factory/<name>" >&2
-      exit 1 ;;
-  esac
-done
+if [ "$(git config --get factory.allowDefaultBranch)" != "true" ] &&
+   branch=$(git symbolic-ref --short HEAD 2>/dev/null); then   # detached HEAD (rebase etc.) skips this
+  for p in $(. "$(dirname "$0")/factory-protected.sh"); do
+    case "$branch" in
+      $p)
+        echo "factory: '$branch' is protected; commit on a work branch, e.g. git switch -c factory/<name>" >&2
+        exit 1 ;;
+    esac
+  done
+fi
+
+# Secrets. A branch without the config isn't set up for the factory yet, so it only gets a warning.
+# Once the config exists, the scan fails closed: a missing row or scanner refuses the commit.
+config=.factory/config.md
+if [ ! -f "$config" ]; then
+  echo "factory: no $config on this branch, so the secrets scan didn't run" >&2
+  exit 0
+fi
+run=$(sed -n 's/^| *Secrets (staged) *| *\(.*[^ ]\) *| *$/\1/p' "$config" | head -n 1 | sed 's/\\|/|/g; s/^`//; s/`$//')
+if [ -z "$run" ]; then
+  echo "factory: $config has no Secrets (staged) command, so the commit is refused. Run /factory:guardrails to add the scans." >&2
+  exit 1
+fi
+set +f
+output=$(sh -c "$run" 2>&1)
+code=$?
+if [ "$code" -eq 127 ]; then
+  echo "factory: the secrets scan can't run (${run%% *} is missing), so the commit is refused. Install it, or ask a person." >&2
+  exit 1
+elif [ "$code" -ne 0 ]; then
+  echo "factory: the secrets scan found a secret in the staged changes. Remove it, and rotate it if it was ever real." >&2
+  echo "$output" >&2
+  exit 1
+fi
 exit 0

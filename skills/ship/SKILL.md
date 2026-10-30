@@ -35,7 +35,9 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
      - the living-spec capabilities changed, and how many requirements were added, modified or removed
      - the review summary, with the suggestions not taken, from `review.md`
      - **migrations and config changes**, from the proposal's Release section, or "none"
+     - **security**, from the proposal's Security section: the flagged areas and the misuse cases with their tests, or who cleared the flag and why, or "not sensitive"; and the scan results from the Checks line of `review.md`
      - the approvals, from the job record
+   - **Security expert:** when `review.md` records an expert decision, add the Expert group from the config's Security section as a required reviewer, as `HOSTS.md` says, and list the decisions in the description. Other jobs, flagged or not, need no one beyond the usual reviewers.
    - **Merge message to use:** the PR title, so `/factory:promote` can find the ticket id.
 
    Add `PR: <link>` to the job record, set the job to `pr_open`, and commit and push. Move the ticket to the "PR open" status from the config, if one is set.
@@ -43,6 +45,7 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
    - the PR link
    - any failing checks or policies
    - how the person merging must complete it: the `PR merge` rule from the config
+   - for a job with an expert decision: that the Expert group's approval is required
    - next: `/factory:ship <id>` again once it has merged
 
    Stop. The job no longer holds the active slot, so `/factory:next` can take the next ticket.
@@ -80,6 +83,7 @@ The merged job record is on the target branch, which is protected, so this secti
 ## Done check
 
 - The PR is open into the target branch, with a description a reviewer can approve from.
+- A PR whose job has an expert decision has the Expert group as a required reviewer.
 - The change is archived, and its deltas are synced into `openspec/specs/`, with `check-specs` printing OK.
 - The job is `pr_open`, and the user knows how the PR must be completed.
 - Nothing in this skill approved, completed or merged the PR.
