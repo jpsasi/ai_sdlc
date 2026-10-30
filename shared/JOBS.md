@@ -16,7 +16,7 @@ Every stage starts by switching to the job's branch (the working tree must be cl
 |---|---|---|
 | `queued` | Stage 1 intake | Claimed and waiting for a spec |
 | `speccing` | Stage 2 | Spec being written |
-| `planning` | Stage 3 | Plan being made |
+| `planning` | Stage 3 | Plan being remade (spec writes the first one) |
 | `building` | Stage 4 | Code being written |
 | `reviewing` | Stage 4, when the build finishes | Waiting for, or under, review |
 | `reviewed` | Stage 5 | Review passed, waiting for the PR |
