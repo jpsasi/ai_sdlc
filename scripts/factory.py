@@ -8,8 +8,11 @@ Run from the product repo root:
   factory.py archive <id>
   factory.py check-specs
   factory.py check-docs
+  factory.py scan <id>      run the config's security scans, and save which findings the job adds
 
-Prints OK (or what it did) and exits 0, or lists every problem and exits 1.
+Prints OK (or what it did) and exits 0, or lists every problem and exits 1. scan exits 1 when the
+job adds a finding, and 2 when a scan can't run. Its output goes to .factory/runs/, which is never
+committed.
 """
 import argparse
 import datetime
@@ -18,12 +21,14 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 SPECS = Path("openspec/specs")
 CHANGES = Path("openspec/changes")
 ARCHIVE = CHANGES / "archive"
 JOBS = Path(".factory/jobs")
+RUNS = Path(".factory/runs")  # local scan output, kept out of git
 
 AC = re.compile(r"\bAC-\d+\b")
 STEP = re.compile(r"^- \[( |x)\] (\d+)\.(.*)$")
@@ -33,6 +38,8 @@ NORMATIVE = re.compile(r"\b(SHALL|MUST)\b")
 DELTA_SECTIONS = ("ADDED", "MODIFIED", "REMOVED", "RENAMED")
 TEST_PATH = re.compile(r"(^|/)(tests?|spec|specs|__tests__)/|(^|/)test_[^/]*$|_test\.[a-z]+$|\.(test|spec)\.[a-z]+$")
 NOT_TESTS = ("docs/", "openspec/", ".factory/")
+SCANS = ("Secrets", "Dependencies", "Code scan")  # Commands table rows, by shared/SECURITY.md
+ADVISORY = re.compile(r"\b(?:GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}|(?:CVE|PYSEC|GO|RUSTSEC|OSV|MAL)-\d{4}-\d+)\b")
 
 
 class Problem(Exception):
@@ -260,8 +267,32 @@ def check_proposal(job, cdir, problems):
         problems.append("proposal header has no 'Delivers: P-n | K-n | none'")
     elif m.group(1) != "none" and m.group(1) not in product_ids():
         problems.append(f"proposal delivers {m.group(1)}, which docs/product.md doesn't define")
+    check_security(proposal, acs, problems)
     check_deltas(job, cdir, acs, problems)
     return acs
+
+
+def check_security(proposal, acs, problems):
+    """The Security section, by SECURITY.md: no; yes, with its areas and misuse cases; or cleared by the developer, with a reason."""
+    text = "\n".join(section(proposal, "Security"))
+    m = re.search(r"^Sensitive:\s*(no|yes|cleared)\b(.*)$", text, re.M)
+    if not m:
+        problems.append("proposal has no '## Security' section with 'Sensitive: no | yes — <areas> | cleared by <name> — <reason>'")
+        return
+    value, rest = m.groups()
+    if value == "yes":
+        if not re.match(r"\s*[—-]+\s*\S", rest):
+            problems.append("a sensitive proposal names its areas: 'Sensitive: yes — <areas>'")
+        cases = re.search(r"^Misuse cases:(.*)$", text, re.M)
+        named = AC.findall(cases.group(1)) if cases else []
+        if not named:
+            problems.append("a sensitive proposal lists its misuse cases: 'Misuse cases: AC-n, ...'")
+        for ac in named:
+            if ac not in acs:
+                problems.append(f"misuse case {ac} isn't an acceptance criterion")
+    elif value == "cleared" and not re.match(r"\s*by\s+\S.*?\s[—-]+\s*\S", rest):
+        problems.append("a cleared flag names who cleared it, and why: "
+                        "'Sensitive: cleared by <name> — <reason>'")
 
 
 def check_approval(job, cdir, problems):
@@ -329,6 +360,107 @@ def validate(args):
         if steps is not None and args.stage == "build":
             check_build(args.job, acs, steps, args.results, problems)
     return report(problems)
+
+
+# ---------- security scans ----------
+
+def config_commands(text):
+    """{row name: command} from the Commands table of .factory/config.md."""
+    out = {}
+    for line in section(text, "Commands"):
+        cells = [c.strip().strip("`") for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
+        if line.startswith("|") and len(cells) > 1 and not re.match(r"^[\s:-]*$", cells[0]):
+            out[cells[0]] = cells[1].replace("\\|", "|")
+    return out
+
+
+def git_out(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+
+
+def run_scan(command, cwd=None):
+    """(outcome, output): outcome is clean, found or error. A scan exits 0 clean, 1 on a finding."""
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, cwd=cwd)
+    except OSError as e:
+        return "error", str(e)
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode == 127:
+        return "error", f"{command.split()[0]} is missing: install it (see shared/SECURITY.md)\n{output}"
+    return {0: "clean", 1: "found"}.get(result.returncode, "error"), output
+
+
+def merge_base(config):
+    m = re.search(r"^Target branch: *(\S+)", config, re.M)
+    if not m:
+        raise Problem("no Target branch in .factory/config.md: run Setup in shared/CONFIG.md")
+    target = m.group(1)
+    for ref in (f"origin/{target}", target):
+        try:
+            return target, git_out("merge-base", ref, "HEAD").strip()
+        except (OSError, subprocess.CalledProcessError):
+            continue
+    raise Problem(f"can't find the merge base with {target}: run git fetch origin {target}")
+
+
+def scan_on(base, command):
+    """Runs a scan over the code at base, in a throwaway worktree."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = Path(tmp) / "base"
+        git_out("worktree", "add", "--detach", "--quiet", str(tree), base)
+        try:
+            return run_scan(command, cwd=tree)
+        finally:
+            git_out("worktree", "remove", "--force", str(tree))
+
+
+def scan(args):
+    """Runs the Secrets, Dependencies and Code scan commands. The secrets and code scans see only the
+    job's commits (<base>); the dependency scan sees the whole tree, so it runs on the merge base too,
+    and only advisories missing there count as the job's. Exits 2 when the scans can't run at all."""
+    config = read(".factory/config.md") or ""
+    commands = config_commands(config)
+    missing = [name for name in SCANS if not commands.get(name)]
+    try:
+        if missing:
+            raise Problem(f"no {', '.join(missing)} command in .factory/config.md: run /factory:guardrails")
+        target, base = merge_base(config)
+    except Problem as e:
+        print(f"- {e}")
+        return 2
+    RUNS.mkdir(parents=True, exist_ok=True)
+    if not (RUNS / ".gitignore").exists():
+        (RUNS / ".gitignore").write_text("*\n", encoding="utf-8")
+    path = RUNS / f"{args.job}-scans.txt"
+    summary, details, worst = [], [], 0
+    for name in SCANS:
+        command = commands[name].replace("<base>", base)
+        if name == "Dependencies" and command.lower() == "none":
+            summary.append(f"{name}: none, the repo has no dependencies")
+            continue
+        outcome, output = run_scan(command)
+        line = {"clean": "clean", "found": "new findings", "error": "can't run"}[outcome]
+        if outcome == "found" and name == "Dependencies":
+            known_outcome, known_output = scan_on(base, command)
+            if known_outcome == "error":
+                outcome, line = "error", f"can't run on {target}"
+                output += f"\n\n-- on {target} --\n{known_output}"
+            else:
+                now, before = set(ADVISORY.findall(output)), set(ADVISORY.findall(known_output))
+                new = sorted(now - before) if now else ["(advisory ids not recognised: all count as new)"]
+                if not new:
+                    outcome = "known"
+                    line = f"no new findings ({len(before & now)} advisory ids known on {target})"
+                else:
+                    known = len(now & before)
+                    line = f"new: {', '.join(new)}" + (f" ({known} advisory ids known on {target})" if known else "")
+        worst = max(worst, {"clean": 0, "known": 0, "found": 1, "error": 2}[outcome])
+        summary.append(f"{name}: {line}")
+        details.append(f"== {name}: {command} ==\n{output}")
+    path.write_text("\n".join(summary) + "\n\n" + "\n\n".join(details) + "\n", encoding="utf-8")
+    print("\n".join(summary))
+    print(f"saved to {path}")
+    return worst
 
 
 # ---------- approve, sync, archive ----------
@@ -498,9 +630,10 @@ def main(argv=None):
         sub.add_parser(name, help=text).add_argument("job")
     sub.add_parser("check-specs", help="check every living spec is well formed and traceable")
     sub.add_parser("check-docs", help="check ids and dependencies in docs/product.md and docs/backlog.md")
+    sub.add_parser("scan", help="run the security scans, and save which findings the job adds").add_argument("job")
     args = parser.parse_args(argv)
     commands = {"validate": validate, "approve": approve, "sync": sync, "archive": archive,
-                "check-specs": check_specs, "check-docs": check_docs}
+                "check-specs": check_specs, "check-docs": check_docs, "scan": scan}
     return commands[args.command](args)
 
 

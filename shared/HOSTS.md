@@ -17,6 +17,7 @@ Every Stage 6 operation, per host. The host, repository and pipelines come from 
 | Do | GitHub | Azure Repos |
 |---|---|---|
 | Create | `gh pr create --base <target> --head <branch> --title "<title>" --body-file <file>` | `az repos pr create --repository <repo> --source-branch <branch> --target-branch <target> --title "<title>" --description "<markdown>"` |
+| Require the security expert | add `--reviewer <org/team>` to Create. GitHub can't require a reviewer on one PR: say in the description that their approval is required before merging | add `--required-reviewers "<group>"` to Create (`--reviewers` only adds optional ones) |
 | Update the description | `gh pr edit <n> --body-file <file>` | `az repos pr update --id <id> --description "<markdown>"` |
 | State and merge commit | `gh pr view <n> --json state,mergeCommit,mergedAt,url` (`MERGED` means completed) | `az repos pr show --id <id> --query "{status: status, merge: lastMergeCommit.commitId}"` (`completed` means merged) |
 | Checks and policies | `gh pr checks <n>` | `az repos pr policy list --id <id>` |

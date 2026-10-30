@@ -16,6 +16,7 @@ To try it from a local clone without installing: `claude --plugin-dir /path/to/f
 - `git`, in the product repo
 - `gh` (GitHub) or `az` with the `azure-devops` extension (Azure Repos), signed in
 - Python 3.8 or newer, for the validator (`scripts/factory.py`)
+- The security scanners, or the team's own: `gitleaks`, `osv-scanner` and `semgrep` by default (`brew install gitleaks osv-scanner semgrep`)
 - The Atlassian connector, only when requirements come from Confluence or tickets go to Jira
 
 ## How it works
@@ -50,7 +51,7 @@ foundation ─▶ backlog of tickets
 | `/factory:spec` | 2 | Writes the OpenSpec proposal and spec deltas: acceptance criteria, impact, release, reproduction for bugs |
 | `/factory:plan` | 3 | Writes `design.md` and test-first `tasks.md` |
 | `/factory:build` | 4 | Builds the plan step by step: red, green, commit |
-| `/factory:review` | 5 | Independent review; blocking findings go back to build, at most twice |
+| `/factory:review` | 5 | Independent review, with security scans on every job and a second, security-only reviewer for security-sensitive ones, which brings in a security expert only for what the standard can't settle; blocking findings go back to build, at most twice |
 | `/factory:ship [job]` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments, and after the merge to delete the branch, follow the deploy and move the ticket |
 | `/factory:promote [from] [to]` | 6 | On request: promotes one environment's branch to the next, follows the deploy, moves the tickets |
 | `/factory:spike <idea>` | — | A time-boxed experiment that never merges; only its findings do |
@@ -65,7 +66,8 @@ The other step skills (`product-sync`, `domain`, `decide`, `architecture`, `skel
 - `CONTEXT.md`: the domain glossary
 - `openspec/specs/`: living specs, the current behaviour of each capability
 - `openspec/changes/<job>/`: each job's proposal, deltas, design, tasks and review, archived once shipped
-- `.factory/config.md`: host, target branch and environments, asked once at the first ship
+- `.factory/config.md`: the target branch, security scan commands and security expert group (set by `guardrails`), and the host and environments (asked once at the first ship)
+- `.factory/runs/`: local scan output, never committed
 - `.factory/jobs/`: job records
 - `.factory/trusted.md`: who may release tickets to the factory
 
@@ -79,13 +81,15 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 - `sync` / `archive <job>`: merge a change's deltas into the living specs, and archive the change
 - `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
 - `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles
+- `scan <job>`: runs the security scans (gitleaks, osv-scanner and semgrep by default), and records which findings the job adds and which were already on the target branch
+- `validate --stage spec` also checks the proposal's Security section: a sensitive proposal names its areas and misuse cases, and a cleared flag names who cleared it and why
 
 ## Layout
 
 ```
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
-agents/           requirements-analyst, architect, planner, investigator, reviewer
-scripts/          factory.py validator and its tests; git hooks
-shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, domain, ADRs, design, testing, prototypes
+agents/           requirements-analyst, architect, planner, investigator, reviewer, security-reviewer
+scripts/          factory.py validator and its tests; git hooks (protected branches, staged secrets scan)
+shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, security, domain, ADRs, design, testing, prototypes
 ```
