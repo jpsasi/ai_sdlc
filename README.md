@@ -52,7 +52,7 @@ foundation ─▶ backlog of tickets
 4. **After a person merges the PR:** run `/factory:ship <KEY>` again. It deletes the branch, waits for the deploy to the first environment, and moves the ticket on.
 5. **When testing passes:** run `/factory:promote` to move everything from one environment to the next, such as dev to QA.
 
-**Where it stops for a person:** approving each foundation step, approving the proposal (spec), settling plan flags, merging the PR, and merging each promotion PR. The factory never approves or merges anything itself.
+**Where it stops for a person:** approving each foundation step, approving the proposal and plan together (spec), merging the PR, and merging each promotion PR. The factory never approves or merges anything itself.
 
 **When things change:** re-run `/factory:foundation` with the changed source when requirements change. It reopens only the affected steps. To try an idea that isn't a requirement yet, use `/factory:spike`. Its findings feed the requirements, and its code never merges.
 
@@ -65,8 +65,8 @@ foundation ─▶ backlog of tickets
 | `/factory:task <description>` | 1 | Turns a bug or task described in chat into a complete ticket |
 | `/factory:next` | 1 | Picks, checks and claims the next ready ticket |
 | `/factory:job [cancel\|retry\|release]` | 1 | Shows or controls the active job |
-| `/factory:spec` | 2 | Writes the OpenSpec proposal and spec deltas: acceptance criteria, impact, release, reproduction for bugs |
-| `/factory:plan` | 3 | Writes `design.md` and test-first `tasks.md` |
+| `/factory:spec` | 2 | Writes the OpenSpec proposal, spec deltas and plan, approved together: acceptance criteria, impact, release, reproduction for bugs, test-first tasks |
+| `/factory:plan` | 3 | Redoes `design.md` and test-first `tasks.md` for a job sent back to planning |
 | `/factory:build` | 4 | Builds the plan in a builder subagent, one commit per step: red, green, commit |
 | `/factory:review` | 5 | Independent review, with security scans on every job and a second, security-only reviewer for security-sensitive ones, which brings in a security expert only for what the standard can't settle; blocking findings go back to build, at most twice |
 | `/factory:ship [job]` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments, and after the merge to delete the branch, follow the deploy and move the ticket |

@@ -1,12 +1,12 @@
 ---
 name: plan
-description: Stage 3 — turn the active job's approved proposal into the change's design.md (approach, decisions, migrations, risks) and test-first tasks.md.
+description: Stage 3 — redo the plan (design.md and test-first tasks.md) for a job sent back to planning; spec drafts the first plan with the proposal.
 disable-model-invocation: true
 ---
 
 # Plan
 
-Stage 3 of the factory. The proposal and its deltas say *what* must be true; the plan says *how*. Write `design.md` and `tasks.md` in the job's change folder, `openspec/changes/<id>/`. Stage 4 builds `tasks.md` one task at a time, ticking each off. The formats follow `${CLAUDE_PLUGIN_ROOT}/shared/OPENSPEC.md`, and jobs follow `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`.
+Stage 3 of the factory. The proposal and its deltas say *what* must be true; the plan says *how*. Spec writes the first plan from the investigator's draft and has it approved with the proposal, so this stage runs only for a job sent back to `planning`, such as a build that found the plan wrong. Spec also uses its checks and formats. Write `design.md` and `tasks.md` in the job's change folder, `openspec/changes/<id>/`. Stage 4 builds `tasks.md` one task at a time, ticking each off. The formats follow `${CLAUDE_PLUGIN_ROOT}/shared/OPENSPEC.md`, and jobs follow `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`.
 
 ## Steps
 
