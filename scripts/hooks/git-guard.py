@@ -65,17 +65,22 @@ def table(text, heading):
     return rows[1:]
 
 
+def strip_prefix(text, prefix):
+    """str.removeprefix, which needs Python 3.9; the README promises 3.8."""
+    return text[len(prefix):] if text.startswith(prefix) else text
+
+
 def target_branch(text):
     m = re.search(r"^Target branch: *(\S+)", text, re.MULTILINE)
     if m:
         return m.group(1)
     head = git("symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD", check=False).strip()
-    return head.removeprefix("origin/") or None
+    return strip_prefix(head, "origin/") or None
 
 
 def default_branch():
     head = git("symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD", check=False).strip()
-    return head.removeprefix("origin/") or git("config", "--get", "init.defaultBranch", check=False).strip() or "main"
+    return strip_prefix(head, "origin/") or git("config", "--get", "init.defaultBranch", check=False).strip() or "main"
 
 
 def branch_rules(text):
@@ -137,7 +142,7 @@ def check_push(text, lines):
         if len(parts) != 4:
             continue
         local_sha, remote_ref, remote_sha = parts[1], parts[2], parts[3]
-        branch = remote_ref.removeprefix("refs/heads/")
+        branch = strip_prefix(remote_ref, "refs/heads/")
         rule = rule_for(branch, rules)
         if not rule:
             continue
