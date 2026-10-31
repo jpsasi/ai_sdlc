@@ -28,7 +28,7 @@ Stage 5 of the factory. An independent reviewer checks the branch before any per
    - **None:** set the job to `reviewed`. Commit the review, the job record and the results file as `review: <id> passed`. Never push. Offer to run `/factory:ship`.
    - **Some, and this is cycle 1 or 2:** add one rework task per blocking finding to the end of `openspec/changes/<id>/tasks.md`, numbered on from the last task, with its `R-n` in the title (`- [ ] 6. <fix> (R-1)`), so the validator counts it as rework. Each task names the test that proves the fix (written first, as in any task), its files, and its verify command. Set the job to `building`, with History "review cycle <n>: <k> blocking". Commit as `review: <id> cycle <n>`, and offer to run `/factory:build`.
 
-     A finding whose fix falls outside the proposal's Impact table can't be reworked in place. Ask the user whether to widen the proposal (the job goes back to `speccing`), accept the finding, or escalate.
+     A finding whose fix falls outside the proposal's Impact table can't be reworked in place. Ask the user whether to widen the proposal (the job goes back to `speccing`), accept the finding, or escalate. This is a scope change, so it stops even with `Approvals: auto`.
    - **Some, after cycle 2:** set the job to `escalated`, with History listing the open findings. Commit, and tell the user that `/factory:job retry` resumes after they've looked.
 
 ## `review.md` format

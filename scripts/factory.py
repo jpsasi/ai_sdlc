@@ -549,6 +549,24 @@ def git_user():
         return ""
 
 
+def approvals_mode():
+    """'auto' or 'manual', from the Approvals line of .factory/config.md, by shared/AUTONOMY.md."""
+    m = re.search(r"^Approvals:\s*(auto|manual)\b", read(".factory/config.md") or "", re.M)
+    return m.group(1) if m else "manual"
+
+
+def auto_refusal(proposal, reason):
+    """Why the factory may not approve this proposal itself, or None. Only a person approves a flagged one."""
+    if approvals_mode() != "auto":
+        return "the repo's Approvals mode isn't auto (.factory/config.md)"
+    if not (reason or "").strip():
+        return "--auto needs a --reason"
+    m = re.search(r"^Sensitive:\s*(no|yes|cleared)\b", "\n".join(section(proposal or "", "Security")), re.M)
+    if not m or m.group(1) != "no":
+        return "only a proposal with 'Sensitive: no' can be approved automatically; ask a person"
+    return None
+
+
 def approve(args):
     if args.what != "proposal":
         print("only 'proposal' approvals are recorded", file=sys.stderr)
@@ -563,8 +581,16 @@ def approve(args):
     if not by:
         print("no --by given, and git config user.name is not set", file=sys.stderr)
         return 2
+    if args.auto:
+        refusal = auto_refusal(read(cdir / "proposal.md"), args.reason)
+        if refusal:
+            print(f"no auto-approval: {refusal}", file=sys.stderr)
+            return 2
+        by = f"factory-auto for {by}"
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     entry = f"- proposal {approval_hash(cdir)} by {by} at {stamp}"
+    if args.auto:
+        entry += f" — {args.reason.strip()}"
     if "\n## Approvals" not in "\n" + record:
         record = record.rstrip("\n") + "\n\n## Approvals\n"
     lines = record.rstrip("\n").split("\n")
@@ -710,10 +736,13 @@ def main(argv=None):
     v.add_argument("job")
     v.add_argument("--stage", choices=["spec", "plan", "build"], required=True)
     v.add_argument("--results", help="file holding the full test run's output")
-    a = sub.add_parser("approve", help="record a person's approval of the proposal and its deltas")
+    a = sub.add_parser("approve", help="record the approval of the proposal and its deltas")
     a.add_argument("job")
     a.add_argument("--what", required=True)
     a.add_argument("--by", help="who approved; defaults to git config user.name")
+    a.add_argument("--auto", action="store_true",
+                   help="the factory approves on the user's behalf: Approvals: auto, and Sensitive: no only")
+    a.add_argument("--reason", help="with --auto: why no person needed to decide")
     for name, text in (("sync", "merge the change's deltas into openspec/specs"),
                        ("archive", "move the change to openspec/changes/archive"),
                        ("stamp", "record the code the job's results file was run against"),

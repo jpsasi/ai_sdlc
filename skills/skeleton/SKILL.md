@@ -15,7 +15,7 @@ Build a **walking skeleton**: the thinnest slices that exercise every risky part
    - every module in `docs/architecture.md`
    - every external system: payment provider, email, identity provider, third-party API
    - every cross-cutting concern: authentication and authorization, configuration and secrets, logging, error handling, database migrations, deployment
-2. **Pick slices by risk.** Choose the fewest `P-n` slices (usually one or two) that together tick every checklist row, and favour the rows most likely to fail. Confirm the slices with the user.
+2. **Pick slices by risk.** Choose the fewest `P-n` slices (usually one or two) that together tick every checklist row, and favour the rows most likely to fail. Confirm the slices with the user (with `Approvals: auto`, take them, and say which and why).
 3. **Lay out the project** so its directories match the modules in `docs/architecture.md`.
 4. **Build the slices test-first**, following `${CLAUDE_PLUGIN_ROOT}/shared/TESTING.md`. Each slice gets one test per layer and one end-to-end test. Reach every external system for real, through its sandbox or test mode. Where that isn't possible, use a stub named `*Stub`, and mark that row `stubbed` with the reason.
 5. **Log gaps as you go.** Whenever something turns out harder than the ADRs or `docs/architecture.md` assumed, or doesn't work at all, add it to the gap log and route it:

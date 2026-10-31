@@ -11,12 +11,12 @@ Move what has passed testing in one environment into the next. Promotion happens
 
 ## Steps
 
-1. **Which environments.** Use the ones named in `$ARGUMENTS`. Otherwise, use the first environment and the one after it in the config's order. Confirm both with the developer, and confirm both branches exist on the remote. With fewer than two environments configured, there is nothing to promote: say so, and stop.
+1. **Which environments.** Use the ones named in `$ARGUMENTS`. Otherwise, use the first environment and the one after it in the config's order. Confirm both with the developer (with `Approvals: auto`, only when they weren't named and the config's order leaves a choice), and confirm both branches exist on the remote. With fewer than two environments configured, there is nothing to promote: say so, and stop.
 2. **Resume first.** Look for a recent PR from the *from* branch into the *to* branch.
    - **Open:** it's with the reviewer. Report its state and checks, and stop.
    - **Merged, and its tickets not yet moved:** go to step 6.
 3. **What would go.** List the commits the promotion carries, as `HOSTS.md` says. Take the ticket ids from the commit subjects (each job's squash commit starts with its ticket id), and read each ticket's status. Commits with no ticket id are **untracked changes**: name each one with the area it touched, so testers can regression-test it. If there's nothing to promote, say so, and stop.
-4. **Check readiness.** Show the developer one line per ticket: id, title, status, commit. Flag every ticket not yet at the *from* environment's "ticket status after deploy" status: still in progress, never released, or not yet tested. **The PR carries every commit in the branch**, so a flagged ticket can't be left behind. The developer either confirms it is safe to go, or holds the whole promotion.
+4. **Check readiness.** Show the developer one line per ticket: id, title, status, commit. Flag every ticket not yet at the *from* environment's "ticket status after deploy" status: still in progress, never released, or not yet tested. **The PR carries every commit in the branch**, so a flagged ticket can't be left behind. The developer either confirms it is safe to go, or holds the whole promotion. This stops in either Approvals mode; with `Approvals: auto` and nothing flagged, go straight on.
 5. **Open the PR** from the *from* branch into the *to* branch, titled `Promote <from> → <to> <date>`. Its description lists:
    - each ticket: id, title, and link
    - each untracked change, with the area to regression-test

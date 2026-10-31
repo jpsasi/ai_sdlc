@@ -12,12 +12,14 @@ Stage 4 of the factory. Carry out `openspec/changes/<id>/tasks.md` one task at a
 
 1. **Load the job.** Find the active job, and switch to its branch, as described in `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`. If the working tree isn't clean, show `git status`, and ask the user to commit or stash their own changes first. The job must be `building`; otherwise, tell the user what to run instead, and stop.
 2. **Check the approval.** Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage plan`. If it reports that the proposal or its deltas changed after approval, nothing is built: set the job to `speccing`, and tell the user to run `/factory:spec`.
-3. **Know the starting point.** Run the full suite once. Tests listed as failing in `docs/baseline.md` are **known red**, and stay known red. Any other failure on the fresh branch is the user's call before you start.
+3. **Know the starting point.** Run the full suite once. Tests listed as failing in `docs/baseline.md` are **known red**, and stay known red. Any other failure on the fresh branch is the user's call before you start, in either Approvals mode.
 4. **Resume** at the plan's first unticked step.
 5. **Build the steps.**
    1. **Dispatch** the `factory:builder` subagent with the job id, the first unticked step, the change folder, the known-red tests, the attempt number with the causes of earlier failed attempts, and any decision the user made for this step.
    2. **Check the result**, for each step the builder reports done: its box is ticked, its commits are on the branch, the working tree is clean apart from the job record, and `git diff --stat` over its commits names only files the plan lists for the step. A step that fails any of these counts as a failed attempt, whatever the builder said. Once every step is built, go to **Finish**.
    3. **On `needs decision`:** put the builder's question to the user, with its options and recommendation. Either the task is adjusted in `tasks.md` (and the change committed with the task), the answer is passed to a new builder starting at that step, or the job goes back to `planning`. Approval to change a test already on the target branch names the person and the reason; pass both to the builder, which adds the `Test-change-approved-by` trailer the git hooks require.
+
+      With `Approvals: auto`, take the builder's recommendation yourself, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`, and record it under the job record's `## Decisions`. Still ask when it changes a test already on the target branch, needs a new dependency, reaches past the proposal's Impact table, or has no clear recommendation.
    4. **On `failed`:** discard the step's uncommitted work first (`git checkout -- . && git clean -fd`, after checking `git status` shows only the step's files), then log the builder's attempts in the job's History, with the failing command and its one-line cause.
 6. **Handle failure.** A step gets 3 attempts to reach green, inside the builder. When it reports `failed`:
    - set the job to `escalated`

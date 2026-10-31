@@ -115,7 +115,7 @@ When a later change MODIFIES a baselined requirement, it adds its tags; the Sour
 | `validate <id> --stage spec` | The proposal's criteria, test plan and capability. Deltas are well formed, consistent with the living specs, and tagged. |
 | `validate <id> --stage plan` | The above, plus: the approval is current, the design has an approach, and every criterion is covered by a task |
 | `validate <id> --stage build [--results <file>]` | The above, plus: every task is ticked, and every criterion has a test named `<id> AC-n …` that ran |
-| `approve <id> --what proposal [--by <name>]` | Records who approved the proposal and its deltas, with a hash, so any later edit voids the approval |
+| `approve <id> --what proposal [--by <name>] [--auto --reason <why>]` | Records who approved the proposal and its deltas, with a hash, so any later edit voids the approval. `--auto` records `factory-auto for <user>`, and is refused unless `Approvals: auto` and `Sensitive: no` |
 | `sync <id>` | Merges the change's deltas into `openspec/specs/`, or writes nothing if any delta fails to apply |
 | `archive <id>` | Moves the change to `openspec/changes/archive/YYYY-MM-DD-<id>/` |
 | `check-specs` | Every living spec is well formed, and every requirement is traceable, with every Source path existing |

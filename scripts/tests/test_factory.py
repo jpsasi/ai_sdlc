@@ -320,6 +320,33 @@ The engine SHALL use the symbol rate first.
         self.assertEqual(code, 0)
         self.assertIn("by Sasikumar JP at", Path(".factory/jobs/REF-12.md").read_text())
 
+    def auto_approve(self, *extra):
+        return self.run_cli("approve", "REF-12", "--what", "proposal", "--by", "Sasi", "--auto", *extra)
+
+    def test_auto_approve_records_reason_and_unlocks_plan(self):
+        self.write(".factory/config.md", "# Factory config\n\nApprovals: auto\n")
+        self.assertEqual(self.auto_approve("--reason", "no critical gate")[0], 0)
+        self.assertIn("by factory-auto for Sasi at", Path(".factory/jobs/REF-12.md").read_text())
+        self.assertIn("— no critical gate", Path(".factory/jobs/REF-12.md").read_text())
+        self.assertEqual(self.run_cli("validate", "REF-12", "--stage", "plan"), (0, "OK\n"))
+
+    def test_auto_approve_refused_in_manual_mode(self):
+        self.assertEqual(self.auto_approve("--reason", "x")[0], 2)
+        self.write(".factory/config.md", "# Factory config\n\nApprovals: manual\n")
+        self.assertEqual(self.auto_approve("--reason", "x")[0], 2)
+        self.assertProblem(self.run_cli("validate", "REF-12", "--stage", "plan"), "no recorded proposal approval")
+
+    def test_auto_approve_needs_reason(self):
+        self.write(".factory/config.md", "Approvals: auto\n")
+        self.assertEqual(self.auto_approve()[0], 2)
+
+    def test_auto_approve_refused_for_flagged_or_cleared_proposal(self):
+        self.write(".factory/config.md", "Approvals: auto\n")
+        for value in ("yes — money movement\nMisuse cases: AC-2", "cleared by Sasi — config only"):
+            self.write(f"{C}/proposal.md", PROPOSAL.replace("Sensitive: no", f"Sensitive: {value}"))
+            self.assertEqual(self.auto_approve("--reason", "x")[0], 2)
+        self.assertNotIn("## Approvals", Path(".factory/jobs/REF-12.md").read_text())
+
     def test_approve_and_validate_after_archive(self):
         self.approve()
         self.run_cli("sync", "REF-12")

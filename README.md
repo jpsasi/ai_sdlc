@@ -52,7 +52,9 @@ foundation ─▶ backlog of tickets
 4. **After a person merges the PR:** run `/factory:ship <KEY>` again. It deletes the branch, waits for the deploy to the first environment, and moves the ticket on.
 5. **When testing passes:** run `/factory:promote` to move everything from one environment to the next, such as dev to QA.
 
-**Where it stops for a person:** approving each foundation step, approving the proposal and plan together (spec), merging the PR, and merging each promotion PR. The factory never approves or merges anything itself.
+**Where it stops for a person:** approving each foundation step, approving the proposal and plan together (spec), merging the PR, and merging each promotion PR. The factory never merges anything itself.
+
+**Approvals: auto.** Most of the time you'd take the factory's recommendation. Set `Approvals: auto` in `.factory/config.md`, and it takes its own recommendation, records each choice (in the job record, and in the PR description), and stops only at the critical gates in `shared/AUTONOMY.md`: security-sensitive proposals, new ADRs, scope or requirement changes, changes to existing tests, irreversible or outward actions, and anything it can't recommend clearly. Foundation then waits only at `product-sync`, `decide` and `backlog`. Merges stay with a person either way.
 
 **When things change:** re-run `/factory:foundation` with the changed source when requirements change. It reopens only the affected steps. To try an idea that isn't a requirement yet, use `/factory:spike`. Its findings feed the requirements, and its code never merges.
 
@@ -94,7 +96,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 
 `scripts/factory.py` (tests in `scripts/tests/`):
 - `validate <job> --stage spec|plan|build`: deltas are well formed and fit the living specs; every acceptance criterion is in the test plan, covered by a task, and proven by a test named `<job> AC-n …` that actually ran
-- `approve <job> --what proposal [--by <name>]`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval
+- `approve <job> --what proposal [--by <name>] [--auto --reason <why>]`: records who approved the proposal and deltas, with a hash, so any later edit voids the approval; `--auto` is refused unless the repo is `Approvals: auto` and the proposal is `Sensitive: no`
 - `sync` / `archive <job>`: merge a change's deltas into the living specs, and archive the change
 - `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
 - `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles

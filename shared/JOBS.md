@@ -46,4 +46,9 @@ Change: openspec/changes/REF-12/ (added by Stage 2; archived by Stage 6)
 
 ## History
 - 2026-10-23 16:40 queued by intake (released by jpsasi)
+
+## Decisions
+- spec: retry key → order id (auto) — the only stable id at submit
 ```
+
+`## Decisions` holds the answers the factory gave itself with `Approvals: auto`, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`. It's added with the first one.
