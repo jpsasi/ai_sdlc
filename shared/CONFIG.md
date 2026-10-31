@@ -12,6 +12,7 @@ Repository: <owner/repo> | <organization/project/repository>
 Target branch: develop
 PR merge: squash, delete source branch
 Promotion merge: merge commit, keep source branch
+Approvals: manual | auto
 
 ## Environments
 | Order | Environment | Branch | Pipeline | Ticket status after deploy |
@@ -59,6 +60,7 @@ Expert: @acme/security
 | `\bINTERNAL-\d+\b` | internal ticket ids stay out of the public history |
 ```
 
+- **Approvals:** `manual` (the default when the line is missing) stops at every gate. `auto` takes the factory's own recommendation and stops only at the critical gates, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`. A person sets it; the factory never changes it.
 - **Target branch** is where job PRs merge. Jobs branch from it, and it is usually the first environment's branch.
 - **Environments** run in order: a job's merge deploys to the environment whose branch is the target, and `/factory:promote` moves work from one environment to the next. The table may be empty; then release ends at the merge.
 - **Pipeline** is a GitHub Actions workflow name or file, or an Azure Pipelines pipeline name. Leave it empty for an environment with no automated deploy.

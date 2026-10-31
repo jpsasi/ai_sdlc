@@ -30,7 +30,7 @@ Confluence is read-only: the factory never edits, comments on, or relabels a pag
    - Without `$ARGUMENTS`: re-sync every source on the `Sources:` list in `docs/foundation-status.md`, or ask the user if there is none.
 2. **Confirm each new or changed source is approved.**
    - `confluence`: the page must carry the label `ready-for-dev`. Check with `searchConfluenceUsingCql` and the query `id = <pageId> AND label = "ready-for-dev"`. If the label is missing, stop and report the blocker "page not labeled ready-for-dev".
-   - `local`: ask the user to confirm the text is what they want to build from.
+   - `local`: ask the user to confirm the text is what they want to build from. With `Approvals: auto`, a file or text the user gave in this command counts as confirmed.
    - `code`: approval comes in step 4, once the user has seen the derived capabilities.
 3. **Analyse.** Dispatch the `factory:requirements-analyst` subagent once per new or changed source, with the current `docs/product.md` if it exists:
    - `confluence` or `local`: the job *draft product*, with the page id or file path. For `confluence` it also returns the page version. For `local`, compute the version yourself.
@@ -50,7 +50,7 @@ Confluence is read-only: the factory never edits, comments on, or relabels a pag
 
    After each round, list the tickets you are about to create, and create them once the user agrees.
 
-   For `local` and `code`, the user owns the answers, so keep grilling until every question is Answered or Dropped. When the user is unsure, narrow the choice with your recommendation and its trade-offs; a choice can always be revisited later. If the session ends mid-grilling, the step stays `in_progress`, and the next run raises only the questions still open.
+   For `local` and `code`, the user owns the answers, in either Approvals mode: requirements are a critical gate by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`. Keep grilling until every question is Answered or Dropped. When the user is unsure, narrow the choice with your recommendation and its trade-offs; a choice can always be revisited later. If the session ends mid-grilling, the step stays `in_progress`, and the next run raises only the questions still open.
 7. **Apply ticket scope** (`confluence` only). A ticket's scope is `foundation` when the answer could change domain terms, NFRs or architecture, and `capability` when it only affects specific `P-n`s. Mark each `capability`-scope capability in `product.md` with `Blocked by <KEY>`, and the factory takes no tasks for those capabilities until the ticket closes. Open tickets never halt Stage 0 on their own: the user decides whether to proceed with them open.
 8. **Harvest closed tickets** (`confluence` only). On every run, check each ticket under Open questions with `getJiraIssue`. For a ticket whose status category is Done, take the resolution from its comments and record it as Answered, as above. Then remove it from Open questions and clear any `Blocked by` marks it caused.
 

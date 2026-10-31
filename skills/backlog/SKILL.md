@@ -54,7 +54,7 @@ For `github`, create any missing label with `gh label create` before using it.
 
    After a re-sync, also work through its in-flight list, as the Re-sync section of `${CLAUDE_PLUGIN_ROOT}/skills/foundation/SKILL.md` describes.
 2. **Draft.** Dispatch the `factory:planner` subagent with the job *plan tasks*, those capabilities, and the paths of `docs/product.md`, `CONTEXT.md`, `docs/architecture.md`, `docs/skeleton-gaps.md` (or `docs/baseline.md` in `existing` mode), and the current `docs/backlog.md`. For a changed capability, have it revise the existing tasks that haven't started, rather than duplicating them.
-3. **Review with the user**, one epic (capability) at a time, priorities included. The user can reorder, reprioritise, merge, split or drop tasks. Ask any questions in rounds, by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`.
+3. **Review with the user**, one epic (capability) at a time, priorities included. The user can reorder, reprioritise, merge, split or drop tasks. Ask any questions in rounds, by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. With `Approvals: auto`, take the planner's draft and priorities without the per-epic review, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`. The user sees the whole backlog once, at step 5, before any ticket is created.
 4. **Write** `docs/backlog.md` in the format below.
 5. **Create the tickets** in the tracker (skip this step for `local`). Use the tracker's form from the table above:
    1. the epic, if it doesn't already exist
@@ -62,7 +62,7 @@ For `github`, create any missing label with `gh label create` before using it.
    3. the dependencies
    4. the ready signal on every approved task
 
-   List the tickets you are about to create, and create them once the user agrees. Record each ticket's key or number in `docs/backlog.md`.
+   List the tickets you are about to create, and create them once the user agrees. This stops in either Approvals mode: with `auto`, it's where the user reviews the backlog, so show it by epic with priorities, and apply any changes before creating anything. For `local`, with `auto`, show the backlog and stop here instead. Record each ticket's key or number in `docs/backlog.md`.
 
 ## `backlog.md` format
 

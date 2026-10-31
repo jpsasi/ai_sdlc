@@ -46,7 +46,7 @@ When a stage skill ends by offering the next stage, that next stage simply runs.
 
 Stop, and tell the user where things stand and what to do next, when:
 
-- **A gate needs the user**: approving the proposal and plan, a scope question, a failing step, a requirement change. Wait for their answer, then carry on with the loop.
+- **A gate needs the user**: approving the proposal and plan, a scope question, a failing step, a requirement change. Wait for their answer, then carry on with the loop. With `Approvals: auto` in `.factory/config.md`, only the critical gates in `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md` stop the loop; the stages answer the rest themselves and record it in the job record.
 - **The job is `pr_open`**: the PR is with a person. Next: `/factory:go <id>` (or `/factory:ship <id>`) again later, which resumes in `${CLAUDE_PLUGIN_ROOT}/skills/ship/SKILL.md`: at the PR feedback while it's open, or at the deploy once it has merged.
 - **The job is `escalated`**: report its History's last entry, and point at `/factory:job retry`.
 - **The user asks to pause.** Everything is committed, so `/factory:go` resumes later at the same point.

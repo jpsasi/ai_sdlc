@@ -11,7 +11,7 @@ disable-model-invocation: true
 ## Steps
 
 1. **Draft.** Dispatch the `factory:architect` subagent with `docs/product.md`, `CONTEXT.md`, every accepted ADR in `docs/adr/`, and the format below. Ask it to shape modules with the vocabulary in `${CLAUDE_PLUGIN_ROOT}/shared/DESIGN.md`: deep modules behind small interfaces. In `existing` mode, ask it to describe the code as it is, citing file paths. Keep it **coarse**: modules, their boundaries and their dependencies. Internals are documented later, one area at a time, when a task first touches them. Dependency rules describe the intended structure; where today's code breaks them, list the breaks under "Known violations", for the `guardrails` ratchet.
-2. **Review with the user**, section by section, and revise. Ask any questions the review raises in rounds, by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`.
+2. **Review with the user**, section by section, and revise. Ask any questions the review raises in rounds, by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. With `Approvals: auto`, skip the section-by-section review: the architecture follows from the accepted ADRs, which the user already decided. Ask only what the ADRs don't settle, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`.
 3. **Route conflicts to decisions.** A draft that contradicts an accepted ADR, or needs a choice no ADR covers, goes back through `${CLAUDE_PLUGIN_ROOT}/skills/decide/SKILL.md`. Never resolve it inside this document.
 
 ## `architecture.md` format

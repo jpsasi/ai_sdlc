@@ -22,7 +22,7 @@ Stage 3 of the factory. The proposal and its deltas say *what* must be true; the
    Add every flag the planner raised.
 4. **Decide.**
    - **No flags:** proceed without asking. Show the user the approach and the task titles in a few lines.
-   - **Flags:** walk the user through them, by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. Each one ends one of four ways:
+   - **Flags:** walk the user through them, by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. With `Approvals: auto`, adjust the plan yourself for each flag that needs only that, record it under the job record's `## Decisions`, and ask only about the rest: a proposal change, an ADR or a new dependency are critical gates by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`. Each one ends one of four ways:
      - the plan is adjusted
      - the proposal needs changing: set the job back to `speccing`, and tell the user to run `/factory:spec`
      - a choice needs an ADR: follow `${CLAUDE_PLUGIN_ROOT}/skills/decide/SKILL.md`

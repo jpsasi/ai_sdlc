@@ -7,7 +7,7 @@ argument-hint: "[confluence-page-url | requirements-file | requirements text | c
 
 # Foundation
 
-Run Stage 0 one step at a time. Every step ends on its **done check** and then the user's approval. `docs/foundation-status.md` is the single record of progress: read it first, and write it on every status change, so a new session resumes exactly where the last one stopped.
+Run Stage 0 one step at a time. Every step ends on its **done check** and then the user's approval. With `Approvals: auto` in `.factory/config.md`, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`, only `product-sync`, `decide` and `backlog` wait for approval; the other steps are approved on their done check. `docs/foundation-status.md` is the single record of progress: read it first, and write it on every status change, so a new session resumes exactly where the last one stopped.
 
 ## Steps
 
@@ -41,7 +41,7 @@ Set the mode once, when the status file is created. The `code` source always mea
 | `in_progress` | Step skill is running, or a session stopped mid-step |
 | `blocked` | Waiting on someone outside this session; the Note names who and what |
 | `review` | Done check passed; waiting for the user's approval |
-| `done` | User approved |
+| `done` | User approved, or auto-approved on its done check (the Note says so) |
 
 ## Branch
 
@@ -55,7 +55,7 @@ Stage 0 never commits to the target branch: `Target branch:` in `.factory/config
      2. If `$ARGUMENTS` is empty, ask for a source. When the repo already holds application code, offer `code` as an option.
      3. Set the mode.
      4. **Target branch.** Run steps 1, 3 and 7 of Setup in `${CLAUDE_PLUGIN_ROOT}/shared/CONFIG.md`: the host, the target branch, and protecting it. When the target branch doesn't exist on the remote yet, offer to create it from the default branch (`git push origin origin/<default>:refs/heads/<target>`) and wait for a yes. It must exist before guardrails protects it, and before anything branches from it.
-     5. Create `factory/foundation` from the latest target branch, and switch to it. Write `.factory/config.md` with the host, repository and target branch (the rest is filled in at the first ship), and create the status file from the template below.
+     5. Create `factory/foundation` from the latest target branch, and switch to it. Write `.factory/config.md` with the host, repository and target branch (the rest is filled in at the first ship), and `Approvals:` as the user chooses: ask once, by `CONFIG.md`, explaining that `auto` stops only at the critical gates in `AUTONOMY.md`; `manual` is the default, and create the status file from the template below.
    - **Present, and `$ARGUMENTS` is `code`:** keep the recorded sources. Code never replaces requirements that already exist, so tell the user why, and offer a **Drift check** (below) instead.
    - **Present, and `$ARGUMENTS` names a new source:** pass it to `product-sync`, which asks whether it adds a feature or replaces the existing sources. If every step is already `done`, continue with **Re-sync**.
    - **Present, and every step is `done`:** run **Re-sync**.
@@ -66,11 +66,12 @@ Stage 0 never commits to the target branch: `Target branch:` in `.factory/config
    - `review`: summarise the output and ask for approval.
 3. **Check.** When the step skill finishes, evaluate its done check.
    - Pass: set `review`, show a summary with file paths, and ask the user to approve or request changes.
+   - Pass, with `Approvals: auto`, on a step other than `product-sync`, `decide` and `backlog`: show the summary, treat it as approval, and write "auto-approved" in the Note. The user can still ask for changes later: that reopens the step.
    - Pass with open Jira tickets (`confluence` sources only): list the tickets with their scope, and ask whether to proceed with them still open.
      - Yes: treat it as approval, and write "proceeding with open <KEYS>" in the Note.
      - No: set `blocked` with "waiting on <KEYS>" in the Note, and stop.
    - Fails otherwise: fix the gap and check again.
-4. **Approve.** On approval, set `done`, and commit the step's outputs together with the status file as `foundation: step N <skill> done` (the approval covers this commit; never push). Continue to the next step unless the user wants to stop. When the user requests changes, apply them, re-run the done check, and ask again.
+4. **Approve.** On approval, set `done`, and commit the step's outputs together with the status file as `foundation: step N <skill> done`, adding ` (auto)` when it was auto-approved (the approval covers this commit; never push). Continue to the next step unless the user wants to stop. When the user requests changes, apply them, re-run the done check, and ask again.
 5. **Share back.** When every step is `done`, draft a summary for the product and tech teams:
    - each accepted ADR: the decision, the chosen option, and the reason
    - a module overview from `docs/architecture.md`
@@ -78,7 +79,7 @@ Stage 0 never commits to the target branch: `Target branch:` in `.factory/config
    - open Jira tickets, with the capabilities they block
    - links to `docs/` in the repo
 
-   Show the draft to the user. Once they agree, write it to `docs/foundation-summary.md`, and tell the user it's ready to share with the product and tech teams. Confluence stays read-only. After a re-sync, update the same file rather than creating a new one.
+   Show the draft to the user. Once they agree (with `Approvals: auto`, straight away), write it to `docs/foundation-summary.md`, and tell the user it's ready to share with the product and tech teams. Confluence stays read-only. After a re-sync, update the same file rather than creating a new one.
 6. **Finish.** Tell the user Stage 0 is complete. Next, they open a pull request from the Stage 0 branch into the target branch, and the factory takes tasks once it has merged.
 
 ## Re-sync
@@ -98,7 +99,7 @@ Run this when requirements change after Stage 0 is complete: a source page was e
    | `guardrails` | Changes the dependency rules in `docs/architecture.md` |
    | `backlog` | Always: new or changed capabilities need tasks |
 
-3. **Confirm.** Show the reopen list with the reasons, and let the user add or remove steps.
+3. **Confirm.** Show the reopen list with the reasons, and let the user add or remove steps. With `Approvals: auto`, take the architect's list.
 4. **Find work already in flight.** For every changed or removed `P-n`, `NFR-n` and `C-n`, list everything that carries it, with an entry for each id, even if the entry is "nothing yet":
    - tasks in `docs/backlog.md`, and their tickets
    - active jobs (`factory/*` branches), with their specs and plans

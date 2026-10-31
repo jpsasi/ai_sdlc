@@ -37,6 +37,7 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
      - **migrations and config changes**, from the proposal's Release section, or "none"
      - **security**, from the proposal's Security section: the flagged areas and the misuse cases with their tests, or who cleared the flag and why, or "not sensitive"; and the scan results from the Checks line of `review.md`
      - the approvals, from the job record
+     - **decisions made automatically**, from the job record's `## Decisions`, when it has any, so the person merging sees every choice made for them
    - **Security expert:** when `review.md` records an expert decision, add the Expert group from the config's Security section as a required reviewer, as `HOSTS.md` says, and list the decisions in the description. Other jobs, flagged or not, need no one beyond the usual reviewers.
    - **Merge message to use:** the PR title, so `/factory:promote` can find the ticket id.
 
@@ -54,11 +55,11 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
 
 Re-running `/factory:ship` on a job in `pr_open` brings review comments back into the factory.
 
-1. Read the unresolved review comments, as `HOSTS.md` says. Show them, and settle each one with the user by `QUESTIONS.md`: act on it, answer it without changing code, or decline it with a reason.
+1. Read the unresolved review comments, as `HOSTS.md` says. Show them, and settle each one with the user by `QUESTIONS.md`: act on it, answer it without changing code, or decline it with a reason. With `Approvals: auto`, settle them yourself by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`, acting on what reviewers asked for, and ask only about the ones that hit a critical gate. Declining a comment always goes to the user.
 2. If any comment is to be acted on:
    - When another job holds the active slot, tell the user. The rework waits until that job reaches `pr_open`, or the user frees the slot with `/factory:job`.
    - Otherwise, add one rework task per comment to the change's `tasks.md`, numbered on from the last task with `(PR-n)` in the title, each with its test first, its files and its verify command.
-   - A comment that changes required behaviour also changes the archived delta and the living spec: edit both the same way, run `check-specs`, and record a new approval with `factory.py approve <id> --what proposal --by "<name>"` after the user's explicit yes.
+   - A comment that changes required behaviour also changes the archived delta and the living spec: edit both the same way, run `check-specs`, and record a new approval with `factory.py approve <id> --what proposal --by "<name>"` after the user's explicit yes. A comment that changes required behaviour is a requirement change, so it stops for the user even with `Approvals: auto`.
    - Set the job to `building`, commit, and offer `/factory:build`. The job then goes through review again, and comes back here as a re-ship.
 3. Draft replies for the comments answered without code changes, for the user to post.
 

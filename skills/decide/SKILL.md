@@ -28,9 +28,9 @@ Statuses: `open`, `accepted`, `superseded`. "Depends on" lists the decisions who
 1. **Build or extend the backlog.**
    - With a topic in `$ARGUMENTS`, add it as an `open` row.
    - With no topic and no backlog file yet, seed the backlog with the baseline decisions: language and framework, data storage, authentication and authorization, API and integration style, hosting and deployment. Add any decision the `factory:architect` subagent derives from the NFRs and constraints in `docs/product.md`.
-   - In `existing` mode, record decisions already embodied in the code as `accepted` ADRs marked "pre-existing", after the user confirms each one.
+   - In `existing` mode, record decisions already embodied in the code as `accepted` ADRs marked "pre-existing", after the user confirms each one. With `Approvals: auto`, they're facts in the code, so record them without asking, and list them for the user.
    - Fill "Depends on" for every new row.
-2. **Grill the decisions** by the method in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. The backlog is the design tree, and the frontier is every `open` row whose "Depends on" rows are all `accepted`. Each round:
+2. **Grill the decisions** by the method in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. A new decision is a critical gate by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`, so the user answers each one even with `Approvals: auto`. The backlog is the design tree, and the frontier is every `open` row whose "Depends on" rows are all `accepted`. Each round:
    1. Dispatch the `factory:architect` subagent with the frontier decisions, `docs/product.md`, `CONTEXT.md`, and the accepted ADRs. Its options build on the answers already given.
    2. Ask the round by the rules in `${CLAUDE_PLUGIN_ROOT}/shared/QUESTIONS.md`. Each question gives:
       - two or three options, each with its trade-offs against the cited `P-n`, `NFR-n` and constraint ids

@@ -9,6 +9,8 @@ argument-hint: "<description of the bug or task>"
 
 Turn the description in `$ARGUMENTS` into a ticket that passes every check in `${CLAUDE_PLUGIN_ROOT}/skills/next/SKILL.md`. All work enters the factory through the tracker, including chat.
 
+With `Approvals: auto`, by `${CLAUDE_PLUGIN_ROOT}/shared/AUTONOMY.md`, don't confirm the classification, the proposed `P-n` and priority, or the ticket before creating it: the user asked for this ticket. Still ask for facts only the user has (steps to reproduce, expected behaviour), and still stop at **Check scope**.
+
 ## Steps
 
 1. **Classify** the description as a bug or a task, and confirm with the user.
