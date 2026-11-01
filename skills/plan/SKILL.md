@@ -16,7 +16,7 @@ Stage 3 of the factory. The proposal and its deltas say *what* must be true; the
    - every acceptance criterion in the proposal is covered by at least one task
    - every file is in the proposal's Impact table
    - 8 tasks or fewer
-   - every task has a test to write first and a verify command
+   - every task has a test to write first and a verify command that runs that task's tests, not the full suite (build runs the full suite once, at the end)
    - no new dependency, and no choice outside the accepted ADRs
 
    Add every flag the planner raised.

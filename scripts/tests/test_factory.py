@@ -401,6 +401,20 @@ The engine SHALL use the symbol rate first.
         self.write(".factory/jobs/REF-12-results.txt", "PASS\n")
         self.assertProblem(self.run_cli("fresh", "REF-12"), "not stamped")
 
+    def test_green_finds_an_earlier_jobs_results_for_the_same_code(self):
+        self.stamped_results()
+        self.write(".factory/jobs/REF-13.md", "# Job REF-13\n")
+        self.write("openspec/changes/REF-13/proposal.md", "# Proposal REF-13\n")
+        self.commit_all()
+        self.assertEqual(self.run_cli("green"), (0, ".factory/jobs/REF-12-results.txt\n"))
+
+    def test_green_misses_once_the_code_changes(self):
+        self.stamped_results()
+        self.write("src/credit.ts", "export const x = 1;")
+        self.assertProblem(self.run_cli("green"), "uncommitted code changes")
+        self.commit_all()
+        self.assertProblem(self.run_cli("green"), "no saved results match this code")
+
     # check-docs
 
     def test_check_docs_backlog_cycle_and_unknown(self):

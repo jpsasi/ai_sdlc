@@ -8,6 +8,12 @@ Each job lives on its own branch, `factory/<id>`, created at intake from the lat
 
 Every stage starts by switching to the job's branch (the working tree must be clean), reads the record, and appends to its History when it changes the status.
 
+**Commands that run without a prompt.** A command the repo's permissions don't allow stops the job until someone approves it, often for hours. So, in every stage:
+
+- Edit the job record, `tasks.md` and other text files with the Edit tool, never with `sed -i`, `perl -i` or a `python3 -` script.
+- Run commands from the repo root as they are. Never prefix them with `cd <repo> &&`, and don't chain an unrelated command onto a push or a test run.
+- Push with the exact forms in `HOSTS.md`, as their own command.
+
 **Finding the active job:** list `git branch --list 'factory/*'`, and read each branch's record with `git show factory/<id>:.factory/jobs/<id>.md`. The active job is the one whose status is not `pr_open`, `done` or `escalated`.
 
 ## Statuses

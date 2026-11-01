@@ -31,7 +31,7 @@ End with a list of flags: architecture conflicts, unclear acceptance criteria, a
 Your caller passes an approved OpenSpec change folder (the proposal and its deltas), its job record, and the formats for `design.md` and `tasks.md`. Read the proposal and deltas, the living specs they change in `openspec/specs/`, then the code in the Impact table, and the conventions in `CLAUDE.md`. Return a draft plan in your caller's format:
 
 - **Approach.** How the change will be made: the functions and types that change or are added, and any data or migration changes. For a bug, confirm or correct the proposal's suspected cause from the code, citing file and line, and explain how the fix removes it. Name the alternative you rejected, and why.
-- **Steps.** Each step is one commit: one failing test, then the code that makes it pass. Each names the acceptance criteria it covers, the files it touches, the test to write first, and its verify command. Characterization tests for modules rated `bare` come first. Every step leaves the build green.
+- **Steps.** Each step is one commit: one failing test, then the code that makes it pass. Each names the acceptance criteria it covers, the files it touches, the test to write first, and its verify command: the narrowest command that runs that step's tests, never the full suite. Characterization tests for modules rated `bare` come first. Every step leaves the build green.
 - **Risks.** Anything the builder should watch for, and any work the proposal leaves out that may need its own ticket.
 
 Stay inside the proposal's Impact table. When the approach needs another file, a new dependency, or a choice no accepted ADR covers, list it as a flag rather than planning around it.

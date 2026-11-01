@@ -443,6 +443,18 @@ def fresh(args):
     return report([])
 
 
+def green(args):
+    """A saved results file already run against this code, so a fresh job branch needn't run the suite to know where it starts.
+    Stamps are written only once the suite passed (known red aside), so any match is green."""
+    tree = code_tree()
+    if tree is None:
+        return report(["uncommitted code changes"])
+    for path in sorted(JOBS.glob("*-results.txt"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if results_stamp(read(path, errors="replace") or "") == tree:
+            print(path)
+            return 0
+    return report([f"no saved results match this code ({tree})"])
+
 # ---------- security scans ----------
 
 def config_commands(text):
@@ -748,12 +760,13 @@ def main(argv=None):
                        ("stamp", "record the code the job's results file was run against"),
                        ("fresh", "check the job's results file still matches the code")):
         sub.add_parser(name, help=text).add_argument("job")
+    sub.add_parser("green", help="print a saved results file whose stamp matches this code, if any")
     sub.add_parser("check-specs", help="check every living spec is well formed and traceable")
     sub.add_parser("check-docs", help="check ids and dependencies in docs/product.md and docs/backlog.md")
     sub.add_parser("scan", help="run the security scans, and save which findings the job adds").add_argument("job")
     args = parser.parse_args(argv)
     commands = {"validate": validate, "approve": approve, "sync": sync, "archive": archive,
-                "check-specs": check_specs, "check-docs": check_docs, "stamp": stamp, "fresh": fresh, "scan": scan}
+                "check-specs": check_specs, "check-docs": check_docs, "stamp": stamp, "fresh": fresh, "green": green, "scan": scan}
     try:
         return commands[args.command](args)
     except Problem as e:

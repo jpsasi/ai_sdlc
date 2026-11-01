@@ -101,6 +101,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 - `check-specs`: every living-spec requirement has SHALL/MUST, a scenario, and a tag or a Source that exists
 - `check-docs`: unique ids in the product and backlog, valid dependencies, no cycles
 - `stamp` / `fresh <job>`: record which code the saved test results came from, so review and ship re-run the suite only when the code changed
+- `green`: finds saved results for the current code, so a new job's build skips its starting-point run
 - `scan <job>`: runs the security scans (gitleaks, osv-scanner and semgrep by default), and records which findings the job adds and which were already on the target branch
 - `validate --stage spec` also checks the proposal's Security section: a sensitive proposal names its areas and misuse cases, and a cleared flag names who cleared it and why
 

@@ -12,7 +12,7 @@ Stage 4 of the factory. Carry out `openspec/changes/<id>/tasks.md` one task at a
 
 1. **Load the job.** Find the active job, and switch to its branch, as described in `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`. If the working tree isn't clean, show `git status`, and ask the user to commit or stash their own changes first. The job must be `building`; otherwise, tell the user what to run instead, and stop.
 2. **Check the approval.** Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage plan`. If it reports that the proposal or its deltas changed after approval, nothing is built: set the job to `speccing`, and tell the user to run `/factory:spec`.
-3. **Know the starting point.** Run the full suite once. Tests listed as failing in `docs/baseline.md` are **known red**, and stay known red. Any other failure on the fresh branch is the user's call before you start, in either Approvals mode.
+3. **Know the starting point.** Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" green`. When it prints a results file, an earlier job already ran the suite against this exact code, and it passed: skip the run. Otherwise, run the full suite once. Tests listed as failing in `docs/baseline.md` are **known red**, and stay known red. Any other failure on the fresh branch is the user's call before you start, in either Approvals mode.
 4. **Resume** at the plan's first unticked step.
 5. **Build the steps.**
    1. **Dispatch** the `factory:builder` subagent with the job id, the first unticked step, the change folder, the known-red tests, the attempt number with the causes of earlier failed attempts, and any decision the user made for this step.
@@ -29,6 +29,7 @@ Stage 4 of the factory. Carry out `openspec/changes/<id>/tasks.md` one task at a
    - run the full suite, lint and boundary checks, saving the test output to `.factory/jobs/<id>-results.txt`. Nothing may fail beyond the known-red list. A failure here counts as an attempt on the step that caused it, under **Handle failure**: dispatch a builder to fix it, with the failing command and output, committing as `<id> fix: <what>`, and run the suite again.
    - run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" stamp <id>`, which records the code the results came from, so review and ship can reuse them while the code is unchanged
    - run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage build --results .factory/jobs/<id>-results.txt`, and fix until it prints OK
+   - run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" scan <id>`, the scans review runs. On exit 1, the job adds a finding that review would block on: dispatch a builder to fix each one, as `<id> fix: <finding>`, with the scans file `.factory/runs/<id>-scans.txt`, then run the suite, `stamp` and the scan again. A finding the builder believes is a false positive goes to review as it is, with the builder's reason. On exit 2, go on: review stops on it and tells the user.
    - set the job to `reviewing`, and commit the job record and the results file as `build: <id> done`
    - offer to run `/factory:review`
 
