@@ -56,6 +56,8 @@ foundation ─▶ backlog of tickets
 
 **Approvals: auto.** Most of the time you'd take the factory's recommendation. Set `Approvals: auto` in `.factory/config.md`, and it takes its own recommendation, records each choice (in the job record, and in the PR description), and stops only at the critical gates in `shared/AUTONOMY.md`: security-sensitive proposals, new ADRs, scope or requirement changes, changes to existing tests, irreversible or outward actions, and anything it can't recommend clearly. Foundation then waits only at `product-sync`, `decide` and `backlog`. Merges stay with a person either way.
 
+**While a subagent works.** The main session doesn't sit idle while the investigator, builder or reviewers run. By `shared/WAITING.md`, it drafts the proposal and the PR description, checks each build step as it's committed, and looks ahead to the next ticket. It never edits tracked files, runs writing git commands, tests or scans meanwhile, because the subagent shares the checkout.
+
 **When things change:** re-run `/factory:foundation` with the changed source when requirements change. It reopens only the affected steps. To try an idea that isn't a requirement yet, use `/factory:spike`. Its findings feed the requirements, and its code never merges.
 
 ## Commands
