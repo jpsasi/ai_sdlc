@@ -21,6 +21,8 @@ Stage 5 of the factory. An independent reviewer checks the branch before any per
    - the paths of `CLAUDE.md`, `CONTEXT.md`, `docs/architecture.md`, `docs/adr/`, `${CLAUDE_PLUGIN_ROOT}/shared/TESTING.md` and `${CLAUDE_PLUGIN_ROOT}/shared/SECURITY.md`
 
    When the proposal says `Sensitive: yes`, dispatch the `factory:security-reviewer` subagent at the same time, with the same diff range, change folder, job record and scans file, and the paths of `.factory/config.md`, `docs/architecture.md`, `docs/adr/` and `SECURITY.md`. Both reviewers number their findings `R-1` onwards: renumber them into one list.
+
+   While they work, do the side work for review in `${CLAUDE_PLUGIN_ROOT}/shared/WAITING.md`.
 5. **Record** the findings in `openspec/changes/<id>/review.md` under a heading for this cycle, in the format below. Its Checks line carries each scan's result: the scans file is never committed, so this line is the PR's record of the run.
 6. **Route** on the blocking findings. A finding that the change touches a sensitive area the proposal didn't flag goes back to spec, whatever the cycle: set the job to `speccing`, with History "review: security-sensitive, not flagged", and offer `/factory:spec`. The proposal gets its flag and misuse cases, and is approved again.
 

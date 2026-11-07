@@ -29,7 +29,7 @@ The change folder is `openspec/changes/<id>/` until this skill archives it, and 
 4. **Push** the job branch, as `HOSTS.md` says.
 5. **Open the PR** into the target branch, or update the open one on a re-ship.
    - **Title:** `<ticket id> <ticket title>`.
-   - **Description:**
+   - **Description**, starting from `.factory/runs/<id>-pr.md` when build or review left one, with each part checked against the final record, change and review:
      - the ticket link, and the proposal's Why
      - each acceptance criterion, with the test that proves it and its result
      - the living-spec capabilities changed, and how many requirements were added, modified or removed
