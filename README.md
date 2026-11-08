@@ -56,7 +56,7 @@ foundation ─▶ backlog of tickets
 
 **Approvals: auto.** Most of the time you'd take the factory's recommendation. Set `Approvals: auto` in `.factory/config.md`, and it takes its own recommendation, records each choice (in the job record, and in the PR description), and stops only at the critical gates in `shared/AUTONOMY.md`: security-sensitive proposals, new ADRs, scope or requirement changes, changes to existing tests, irreversible or outward actions, and anything it can't recommend clearly. Foundation then waits only at `product-sync`, `decide` and `backlog`. Merges stay with a person either way.
 
-**While a subagent works.** The main session doesn't sit idle while the investigator, builder or reviewers run. By `shared/WAITING.md`, it drafts the proposal and the PR description, checks each build step as it's committed, and looks ahead to the next ticket. It never edits tracked files, runs writing git commands, tests or scans meanwhile, because the subagent shares the checkout.
+**While a subagent works.** The main session doesn't sit idle while the investigator, builder, reviewers or unit-tester run. By `shared/WAITING.md`, it drafts the proposal and the PR description, checks each build step as it's committed, and looks ahead to the next ticket. It never edits tracked files, runs writing git commands, tests or scans meanwhile, because the subagent shares the checkout.
 
 **When things change:** re-run `/factory:foundation` with the changed source when requirements change. It reopens only the affected steps. To try an idea that isn't a requirement yet, use `/factory:spike`. Its findings feed the requirements, and its code never merges.
 
@@ -71,7 +71,7 @@ foundation ─▶ backlog of tickets
 | `/factory:job [cancel\|retry\|release]` | 1 | Shows or controls the active job |
 | `/factory:spec` | 2 | Writes the OpenSpec proposal, spec deltas and plan, approved together: acceptance criteria, impact, release, reproduction for bugs, test-first tasks |
 | `/factory:plan` | 3 | Redoes `design.md` and test-first `tasks.md` for a job sent back to planning |
-| `/factory:build` | 4 | Builds the plan in a builder subagent, one commit per step: red, green, commit |
+| `/factory:build` | 4 | Builds the plan in a builder subagent, one commit per step: red, green, commit; a unit-tester subagent runs the full suite at the end |
 | `/factory:review` | 5 | Independent review, with security scans on every job and a second, security-only reviewer for security-sensitive ones, which brings in a security expert only for what the standard can't settle; blocking findings go back to build, at most twice |
 | `/factory:ship [job]` | 6 | Syncs spec deltas into the living specs, archives the change, opens the PR (GitHub or Azure); re-run for PR comments, and after the merge to delete the branch, follow the deploy and move the ticket |
 | `/factory:promote [from] [to]` | 6 | On request: promotes one environment's branch to the next, follows the deploy, moves the tickets |
@@ -112,7 +112,7 @@ Each job lives on its own `factory/<id>` branch, and Stage 0 on `factory/foundat
 ```
 .claude-plugin/   plugin.json, marketplace.json
 skills/           one directory per skill
-agents/           requirements-analyst, architect, planner, investigator, builder, reviewer, security-reviewer
+agents/           requirements-analyst, architect, planner, investigator, builder, unit-tester, reviewer, security-reviewer
 hooks/            hooks.json: the SessionStart hook that enables the committed git hooks in each clone
 scripts/          factory.py validator and its tests; git hooks (the git guard: branches, migrations, test changes, staged secrets) and Claude Code hooks (env guard, Stop tests, test lock)
 shared/           rules every skill follows: questions, jobs, OpenSpec, config, hosts, security, domain, ADRs, design, testing, prototypes

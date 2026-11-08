@@ -6,13 +6,13 @@ disable-model-invocation: true
 
 # Build
 
-Stage 4 of the factory. Carry out `openspec/changes/<id>/tasks.md` one task at a time. A `factory:builder` subagent builds them in its own context, in order: **red**, then **green**, then committed and ticked off. One builder takes the whole plan, so the code and conventions are read once; a fresh one starts only after a failure or a decision. This session coordinates: it checks each result against git, keeps the job record, asks the user only what a builder can't decide, and runs the full suite at the end. It writes no code itself. Jobs follow `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`.
+Stage 4 of the factory. Carry out `openspec/changes/<id>/tasks.md` one task at a time. A `factory:builder` subagent builds them in its own context, in order: **red**, then **green**, then committed and ticked off. One builder takes the whole plan, so the code and conventions are read once; a fresh one starts only after a failure or a decision. This session coordinates: it checks each result against git, keeps the job record, asks the user only what a builder can't decide, and has a `factory:unit-tester` run the full suite at the end. It writes no code itself. Jobs follow `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`.
 
 ## Steps
 
 1. **Load the job.** Find the active job, and switch to its branch, as described in `${CLAUDE_PLUGIN_ROOT}/shared/JOBS.md`. If the working tree isn't clean, show `git status`, and ask the user to commit or stash their own changes first. The job must be `building`; otherwise, tell the user what to run instead, and stop.
 2. **Check the approval.** Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage plan`. If it reports that the proposal or its deltas changed after approval, nothing is built: set the job to `speccing`, and tell the user to run `/factory:spec`.
-3. **Know the starting point.** Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" green`. When it prints a results file, an earlier job already ran the suite against this exact code, and it passed: skip the run. Otherwise, run the full suite once. Tests listed as failing in `docs/baseline.md` are **known red**, and stay known red. Any other failure on the fresh branch is the user's call before you start, in either Approvals mode.
+3. **Know the starting point.** Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" green`. When it prints a results file, an earlier job already ran the suite against this exact code, and it passed: skip the run. Otherwise, run the full suite once, by **Running the suite** below, saving to `.factory/runs/<id>-start.txt`. Tests listed as failing in `docs/baseline.md` are **known red**, and stay known red. Any other failure on the fresh branch is the user's call before you start, in either Approvals mode.
 4. **Resume** at the plan's first unticked step.
 5. **Build the steps.**
    1. **Dispatch** the `factory:builder` subagent with the job id, the first unticked step, the change folder, the known-red tests, the attempt number with the causes of earlier failed attempts, and any decision the user made for this step. While it works, do the side work for build in `${CLAUDE_PLUGIN_ROOT}/shared/WAITING.md`: never edit a file or run a writing git command, a test or a scan meanwhile.
@@ -26,12 +26,18 @@ Stage 4 of the factory. Carry out `openspec/changes/<id>/tasks.md` one task at a
    - write a History entry with what was tried, the last failure output, and the builder's view of whether the plan or the proposal is wrong
    - keep the branch as it is, and tell the user that `/factory:job retry` resumes from this step
 7. **Finish.** When every box is ticked:
-   - run the full suite, lint and boundary checks, saving the test output to `.factory/jobs/<id>-results.txt`. Nothing may fail beyond the known-red list. A failure here counts as an attempt on the step that caused it, under **Handle failure**: dispatch a builder to fix it, with the failing command and output, committing as `<id> fix: <what>`, and run the suite again.
+   - run the full suite, lint and boundary checks, by **Running the suite** below, saving the test output to `.factory/jobs/<id>-results.txt`. Nothing may fail beyond the known-red list. A failure here counts as an attempt on the step that caused it, under **Handle failure**: dispatch a builder to fix it, with the failing command and output, committing as `<id> fix: <what>`, and run the suite again.
    - run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" stamp <id>`, which records the code the results came from, so review and ship can reuse them while the code is unchanged
    - run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" validate <id> --stage build --results .factory/jobs/<id>-results.txt`, and fix until it prints OK
    - run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/factory.py" scan <id>`, the scans review runs. On exit 1, the job adds a finding that review would block on: dispatch a builder to fix each one, as `<id> fix: <finding>`, with the scans file `.factory/runs/<id>-scans.txt`, then run the suite, `stamp` and the scan again. A finding the builder believes is a false positive goes to review as it is, with the builder's reason. On exit 2, go on: review stops on it and tells the user.
    - set the job to `reviewing`, and commit the job record and the results file as `build: <id> done`
    - offer to run `/factory:review`
+
+## Running the suite
+
+This session never runs the full suite itself: its output would fill this context. Dispatch the `factory:unit-tester` subagent with the job id, the file to save the output to, whether to run lint and boundary checks too, and the known-red tests. While it works, do the side work in `${CLAUDE_PLUGIN_ROOT}/shared/WAITING.md` for the stage that dispatched it.
+
+When it returns, trust the run only when its `HEAD` is the branch's current `HEAD` and it reports no changed files beyond the job record, and the output file it names exists. Otherwise run it again. Act on its summary: the counts, the failures beyond known red, and the lint and boundary results. A test it reports as flaky is a failure: give it to the builder or the user like any other, with both results. Review and ship run the suite the same way.
 
 ## Done check
 
