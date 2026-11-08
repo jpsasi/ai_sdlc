@@ -2,7 +2,7 @@
 
 When a stage dispatches a subagent, this session would otherwise sit idle until it returns. Dispatch it in the background where the harness allows, then use the wait for the side work below. The subagent's result always comes first: when it returns, finish the action in hand, and go back to the stage.
 
-The investigator, builder and reviewers share this checkout with you. Anything that changes what they see, or takes a lock they need, can corrupt their work. So, whatever the stage:
+The investigator, builder, reviewers and unit-tester share this checkout with you. Anything that changes what they see, or takes a lock they need, can corrupt their work. So, whatever the stage:
 
 - **Never** edit a tracked file, or run a git command that writes: `commit`, `add`, `checkout`, `switch`, `merge`, `stash`, `reset`, `clean`, `rebase`. Read with `git --no-optional-locks status`, `log` and `diff`, which don't touch the index lock.
 - **Never** run the test suite, a scan, a build or an install. They compete with the subagent's own runs for the test database, ports and CPU, and a scan of half-built code means nothing.
@@ -25,5 +25,7 @@ The investigator, builder and reviewers share this checkout with you. Anything t
 **Review, while the reviewers run:**
 - Draft or finish the PR description, as for build.
 - Send the reviewers nothing beyond what review step 4 lists, so they stay independent of this session.
+
+**Any stage, while the unit-tester runs the suite:** the side work of the stage that dispatched it, as above. In build's Finish, that's the PR description.
 
 **Any stage, once the above is done: look ahead.** Run steps 2 and 3 of `${CLAUDE_PLUGIN_ROOT}/skills/next/SKILL.md` to see which ticket it would pick next, but take none of its "On failure" actions: no relabeling, no comments, no backlog edits. When the likely next ticket is missing something only the user knows, tell the user now, so the ticket is ready when this job reaches `pr_open`.
